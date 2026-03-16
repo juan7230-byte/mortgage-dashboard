@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mortgage Rate Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #edf1f6;
+      --surface:   #ffffff;
+      --surface2:  #f5f8fb;
+      --surface3:  #e8eef5;
+      --border:    #cdd8e6;
+      --border2:   #b0c4d8;
+      --text:      #1e3358;
+      --muted:     #5a7a9a;
+      --muted2:    #8aaac0;
+      --conv:      #2a6fa8;
+      --conv-glow: rgba(42,111,168,0.18);
+      --fha:       #c9921a;
+      --fha-glow:  rgba(201,146,26,0.18);
+      --up:        #c0392b;
+      --down:      #219653;
+      --helm-navy: #1e3358;
+      --helm-blue: #4a87b0;
+    }
+
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(42,111,168,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(30,51,88,0.05) 0%, transparent 60%);
+    }
+
+    /* ── TOP BAR ─────────────────────────── */
+    .topbar {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(30,51,88,0.06);
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 30px; height: 30px;
+      background: linear-gradient(135deg, var(--conv), #1e5a8a);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #fff;
+    }
+    .brand-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .topbar-meta {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: right;
+    }
+    .live-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: #219653;
+      border-radius: 50%;
+      margin-right: 5px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── LAYOUT ──────────────────────────── */
+    .container { max-width: 1140px; margin: 0 auto; padding: 28px 24px; }
+
+    /* ── RATE CARDS ──────────────────────── */
+    .rate-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 22px; }
+
+    .rate-card {
+      position: relative;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 22px 24px 20px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px rgba(30,51,88,0.06);
+    }
+    .rate-card:hover { border-color: var(--border2); box-shadow: 0 4px 16px rgba(30,51,88,0.10); }
+
+    /* glowing top border */
+    .rate-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: 14px 14px 0 0;
+    }
+    .rate-card.conv::before { background: linear-gradient(90deg, transparent, var(--conv), transparent); }
+    .rate-card.fha::before  { background: linear-gradient(90deg, transparent, var(--fha), transparent); }
+
+    /* subtle bg glow */
+    .rate-card::after {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .rate-card.conv::after { background: radial-gradient(circle, var(--conv-glow) 0%, transparent 70%); }
+    .rate-card.fha::after  { background: radial-gradient(circle, var(--fha-glow)  0%, transparent 70%); }
+
+    .rate-label {
+      font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 12px;
+    }
+    .rate-value {
+      font-size: 2.6rem; font-weight: 700;
+      letter-spacing: -0.04em; line-height: 1;
+      margin-bottom: 10px;
+    }
+    .rate-card.conv .rate-value { color: var(--conv); }
+    .rate-card.fha  .rate-value { color: var(--fha);  }
+
+    .rate-change { font-size: 0.78rem; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+    .rate-change.up   { color: var(--up); }
+    .rate-change.down { color: var(--down); }
+    .rate-change.flat { color: var(--muted); }
+    .rate-change-arrow { font-size: 0.7rem; }
+    .rate-date { font-size: 0.68rem; color: var(--muted2); margin-top: 5px; }
+
+    /* ── CHART PANEL ─────────────────────── */
+    .chart-panel {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 24px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(30,51,88,0.06);
+    }
+
+    .chart-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .chart-title-wrap {}
+    .chart-title { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .chart-subtitle { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+    .legend { display: flex; gap: 18px; align-items: center; padding-top: 2px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+    .legend-pip {
+      width: 24px; height: 3px; border-radius: 2px;
+      position: relative;
+    }
+    .legend-pip::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 3px;
+      filter: blur(3px);
+      opacity: 0.6;
+    }
+    .legend-pip.conv { background: var(--conv); }
+    .legend-pip.fha  { background: var(--fha);  }
+
+    /* ── DUAL SLIDER ─────────────────────── */
+    .slider-section { margin-top: 18px; }
+    .slider-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .slider-date-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .slider-date-pill {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.02em;
+      min-width: 90px;
+      text-align: center;
+    }
+    .slider-range-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .slider-track {
+      position: relative;
+      height: 5px;
+      background: var(--surface3);
+      border-radius: 3px;
+      margin: 8px 10px 4px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    .slider-fill {
+      position: absolute;
+      height: 100%;
+      background: linear-gradient(90deg, var(--conv), var(--fha));
+      border-radius: 3px;
+      pointer-events: none;
+    }
+
+    .slider-thumb {
+      position: absolute;
+      top: 50%;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: grab;
+      z-index: 2;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(30,51,88,0.22);
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .slider-thumb#thumb-left  { background: var(--conv); }
+    .slider-thumb#thumb-right { background: var(--fha);  }
+    .slider-thumb:hover  { transform: translate(-50%, -50%) scale(1.2); }
+    .slider-thumb:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.3); }
+
+    .slider-ticks {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+    .slider-tick { font-size: 0.62rem; color: var(--muted2); }
+
+    /* ── CHART CANVAS ────────────────────── */
+    .chart-wrap { position: relative; margin-top: 18px; }
+    canvas#rateChart { display: block; width: 100%; cursor: crosshair; }
+
+    .tooltip {
+      position: absolute;
+      background: #ffffff;
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+      z-index: 10;
+      box-shadow: 0 4px 16px rgba(30,51,88,0.14);
+    }
+    .tooltip-date { color: var(--muted); margin-bottom: 8px; font-weight: 600; font-size: 0.7rem; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .tooltip-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .tooltip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .tooltip-val { font-weight: 600; }
+
+    .crosshair {
+      position: absolute; top: 0; width: 1px;
+      background: linear-gradient(180deg, transparent, rgba(42,111,168,0.2), transparent);
+      pointer-events: none; display: none;
+    }
+
+    /* ── FOOTER ──────────────────────────── */
+    .footer {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .footer-left { font-size: 0.68rem; color: var(--muted2); }
+    .footer-right { font-size: 0.68rem; color: var(--muted2); }
+    .footer a { color: var(--muted); text-decoration: none; }
+    .footer a:hover { color: var(--conv); }
+
+    .empty-state {
+      padding: 60px 20px; text-align: center;
+      color: var(--muted); font-size: 0.85rem; line-height: 1.8;
+    }
+    code {
+      background: var(--surface3);
+      padding: 3px 8px; border-radius: 5px;
+      font-family: 'SF Mono', monospace; font-size: 0.8rem;
+      color: var(--conv); border: 1px solid var(--border);
+    }
+
+    /* ── INFO PANELS ─────────────────────── */
+    .info-panel {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-top: 16px;
+      box-shadow: 0 2px 8px rgba(30,51,88,0.06);
+    }
+    .info-panel-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── ASSUMPTIONS ─────────────────────── */
+    .assumptions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .assumption-header {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid;
+    }
+    .assumption-header.conv-header { color: var(--conv); border-color: var(--conv); }
+    .assumption-header.fha-header  { color: var(--fha);  border-color: var(--fha);  }
+    .assumption-header.about-header { color: var(--muted); border-color: var(--border); }
+    .assumption-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--surface3);
+      font-size: 0.75rem;
+    }
+    .assumption-row:last-child { border-bottom: none; }
+    .assumption-row span:first-child { color: var(--muted); }
+    .assumption-row span:last-child  { font-weight: 600; color: var(--text); }
+    .about-text {
+      font-size: 0.77rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    /* ── TREND CHIPS ─────────────────────── */
+    .trend-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .trend-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid;
+      min-width: 68px;
+    }
+    .trend-chip.up   { background: rgba(192,57,43,0.06);  border-color: rgba(192,57,43,0.2);  }
+    .trend-chip.down { background: rgba(33,150,83,0.06);  border-color: rgba(33,150,83,0.2);  }
+    .trend-chip.flat { background: var(--surface3);        border-color: var(--border);         }
+    .chip-label {
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+    .chip-val {
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .trend-chip.up   .chip-val { color: var(--up); }
+    .trend-chip.down .chip-val { color: var(--down); }
+    .trend-chip.flat .chip-val { color: var(--muted); }
+
+    /* ── COMMENTARY ──────────────────────── */
+    .commentary-text p {
+      font-size: 0.82rem;
+      line-height: 1.75;
+      color: #3a5272;
+      margin-bottom: 12px;
+    }
+    .commentary-text p:last-child { margin-bottom: 0; }
+    .commentary-updated {
+      font-size: 0.68rem;
+      color: var(--muted2);
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid var(--surface3);
+    }
+    .market-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      margin-top: 18px;
+    }
+    .market-section-label:first-child { margin-top: 0; }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">%</div>
+    <div>
+      <div class="brand-name">Helm Mortgage Corp</div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:1px;">Mortgage Rate Dashboard</div>
+    </div>
+  </div>
+  <div class="topbar-meta">
+    <div><span class="live-dot"></span>ICE Mortgage Technology Index</div>
+    <div style="margin-top:3px">Updated: <span id="last-updated">—</span></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- RATE CARDS -->
+  <div class="rate-cards">
+    <div class="rate-card conv">
+      <div class="rate-label">30-Year Conventional</div>
+      <div class="rate-value" id="conv-rate">—</div>
+      <div class="rate-change flat" id="conv-change">—</div>
+      <div class="rate-date" id="conv-date"></div>
+    </div>
+    <div class="rate-card fha">
+      <div class="rate-label">30-Year FHA</div>
+      <div class="rate-value" id="fha-rate">—</div>
+      <div class="rate-change flat" id="fha-change">—</div>
+      <div class="rate-date" id="fha-date"></div>
+    </div>
+  </div>
+
+  <!-- CHART PANEL -->
+  <div class="chart-panel">
+    <div class="chart-toolbar">
+      <div class="chart-title-wrap">
+        <div class="chart-title">Daily Rate History</div>
+        <div class="chart-subtitle">OBMMIC30YF &nbsp;·&nbsp; OBMMIFHA30YF &nbsp;·&nbsp; Via FRED</div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-pip conv"></div>Conventional</div>
+        <div class="legend-item"><div class="legend-pip fha"></div>FHA</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap" id="chart-wrap">
+      <canvas id="rateChart" height="320"></canvas>
+      <div class="tooltip" id="tooltip">
+        <div class="tooltip-date" id="tt-date"></div>
+        <div class="tooltip-row">
+          <div class="tooltip-dot" style="background:var(--conv);box-shadow:0 0 4px var(--conv-glow)"></div>
+          <span id="tt-conv"></span>
+        </div>
+        <div class="tooltip-row">
+          <div class="tooltip-dot" style="background:var(--fha);box-shadow:0 0 4px var(--fha-glow)"></div>
+          <span id="tt-fha"></span>
+        </div>
+      </div>
+      <div class="crosshair" id="crosshair"></div>
+    </div>
+
+    <!-- DUAL SLIDER -->
+    <div class="slider-section">
+      <div class="slider-wrap" id="slider-wrap">
+        <div class="slider-date-labels">
+          <div class="slider-date-pill" id="lbl-start">—</div>
+          <div class="slider-range-label" id="lbl-span">— days selected</div>
+          <div class="slider-date-pill" id="lbl-end">—</div>
+        </div>
+        <div class="slider-track" id="slider-track">
+          <div class="slider-fill"  id="slider-fill"></div>
+          <div class="slider-thumb" id="thumb-left"  data-thumb="left"></div>
+          <div class="slider-thumb" id="thumb-right" data-thumb="right"></div>
+        </div>
+        <div class="slider-ticks" id="slider-ticks"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MARKET OVERVIEW -->
+  <div class="info-panel">
+    <div class="info-panel-title">Market Overview</div>
+    <div class="market-section-label">Conventional Rate Change — 30-Year Fixed</div>
+    <div id="trend-chips" class="trend-chips"></div>
+    <div class="market-section-label">Historical</div>
+    <div id="commentary-historical" class="commentary-text"></div>
+    <div class="market-section-label">Outlook</div>
+    <div id="commentary-outlook" class="commentary-text"></div>
+    <div class="commentary-updated">Updated: <span id="commentary-date">—</span></div>
+  </div>
+
+  <!-- RATE ASSUMPTIONS -->
+  <div class="info-panel">
+    <div class="info-panel-title">Rate Assumptions &amp; Methodology</div>
+    <div class="assumptions-grid">
+      <div>
+        <div class="assumption-header conv-header">30-Year Conventional</div>
+        <div class="assumption-row"><span>Credit score</span><span>740+</span></div>
+        <div class="assumption-row"><span>Down payment</span><span>20%</span></div>
+        <div class="assumption-row"><span>Loan limit</span><span>≤ $806,500 (conforming)</span></div>
+        <div class="assumption-row"><span>Property type</span><span>Primary residence, SFR</span></div>
+        <div class="assumption-row"><span>Points</span><span>Zero discount points</span></div>
+        <div class="assumption-row"><span>PMI required</span><span>No (≥20% down)</span></div>
+      </div>
+      <div>
+        <div class="assumption-header fha-header">30-Year FHA</div>
+        <div class="assumption-row"><span>Credit score</span><span>580+</span></div>
+        <div class="assumption-row"><span>Down payment</span><span>3.5% minimum</span></div>
+        <div class="assumption-row"><span>Loan limit</span><span>FHA county maximum</span></div>
+        <div class="assumption-row"><span>Property type</span><span>Primary residence only</span></div>
+        <div class="assumption-row"><span>MIP (upfront)</span><span>1.75% of loan amount</span></div>
+        <div class="assumption-row"><span>MIP (annual)</span><span>~0.55% / year</span></div>
+      </div>
+      <div>
+        <div class="assumption-header about-header">About This Data</div>
+        <p class="about-text">
+          ICE Mortgage Technology (formerly Ellie Mae) operates Encompass®, the loan origination
+          platform used by ~35% of U.S. mortgage lenders. These daily indices reflect actual
+          <em>locked</em> applications — not advertised teaser rates. Published weekdays by
+          ~4 PM ET via the Federal Reserve's FRED database (series OBMMIC30YF &amp; OBMMIFHA30YF).
+          Rates represent what a borrower matching the above profile would have received that day.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">
+      Source: <a href="https://fred.stlouisfed.org/series/OBMMIC30YF" target="_blank">Federal Reserve (FRED)</a>
+      &nbsp;·&nbsp; ICE Mortgage Technology &nbsp;·&nbsp; Weekdays ~4 PM ET
+    </div>
+    <div class="footer-right">Data refreshed weekdays · Open-source via FRED API</div>
+  </div>
+</div>
+
+<script id="embedded-rates">
+// AUTO-UPDATED BY SCHEDULED TASK — DO NOT EDIT MANUALLY
+window.EMBEDDED_RATES = {
+  lastUpdated: "2026-03-15 09:01 PM",
+  conventional: [{"date": "2021-03-16", "rate": 3.268}, {"date": "2021-03-17", "rate": 3.304}, {"date": "2021-03-18", "rate": 3.349}, {"date": "2021-03-19", "rate": 3.353}, {"date": "2021-03-22", "rate": 3.342}, {"date": "2021-03-23", "rate": 3.303}, {"date": "2021-03-24", "rate": 3.283}, {"date": "2021-03-25", "rate": 3.285}, {"date": "2021-03-26", "rate": 3.304}, {"date": "2021-03-29", "rate": 3.308}, {"date": "2021-03-30", "rate": 3.336}, {"date": "2021-03-31", "rate": 3.337}, {"date": "2021-04-01", "rate": 3.321}, {"date": "2021-04-02", "rate": 3.329}, {"date": "2021-04-05", "rate": 3.335}, {"date": "2021-04-06", "rate": 3.287}, {"date": "2021-04-07", "rate": 3.283}, {"date": "2021-04-08", "rate": 3.262}, {"date": "2021-04-09", "rate": 3.27}, {"date": "2021-04-12", "rate": 3.265}, {"date": "2021-04-13", "rate": 3.224}, {"date": "2021-04-14", "rate": 3.199}, {"date": "2021-04-15", "rate": 3.16}, {"date": "2021-04-16", "rate": 3.173}, {"date": "2021-04-19", "rate": 3.182}, {"date": "2021-04-20", "rate": 3.177}, {"date": "2021-04-21", "rate": 3.152}, {"date": "2021-04-22", "rate": 3.149}, {"date": "2021-04-23", "rate": 3.14}, {"date": "2021-04-26", "rate": 3.142}, {"date": "2021-04-27", "rate": 3.166}, {"date": "2021-04-28", "rate": 3.187}, {"date": "2021-04-29", "rate": 3.196}, {"date": "2021-04-30", "rate": 3.169}, {"date": "2021-05-03", "rate": 3.14}, {"date": "2021-05-04", "rate": 3.133}, {"date": "2021-05-05", "rate": 3.149}, {"date": "2021-05-06", "rate": 3.134}, {"date": "2021-05-07", "rate": 3.101}, {"date": "2021-05-10", "rate": 3.1}, {"date": "2021-05-11", "rate": 3.133}, {"date": "2021-05-12", "rate": 3.194}, {"date": "2021-05-13", "rate": 3.195}, {"date": "2021-05-14", "rate": 3.172}, {"date": "2021-05-17", "rate": 3.16}, {"date": "2021-05-18", "rate": 3.176}, {"date": "2021-05-19", "rate": 3.182}, {"date": "2021-05-20", "rate": 3.183}, {"date": "2021-05-21", "rate": 3.17}, {"date": "2021-05-24", "rate": 3.151}, {"date": "2021-05-25", "rate": 3.131}, {"date": "2021-05-26", "rate": 3.109}, {"date": "2021-05-27", "rate": 3.16}, {"date": "2021-05-28", "rate": 3.151}, {"date": "2021-06-01", "rate": 3.165}, {"date": "2021-06-02", "rate": 3.159}, {"date": "2021-06-03", "rate": 3.181}, {"date": "2021-06-04", "rate": 3.168}, {"date": "2021-06-07", "rate": 3.173}, {"date": "2021-06-08", "rate": 3.141}, {"date": "2021-06-09", "rate": 3.137}, {"date": "2021-06-10", "rate": 3.13}, {"date": "2021-06-11", "rate": 3.122}, {"date": "2021-06-14", "rate": 3.143}, {"date": "2021-06-15", "rate": 3.161}, {"date": "2021-06-16", "rate": 3.197}, {"date": "2021-06-17", "rate": 3.245}, {"date": "2021-06-18", "rate": 3.222}, {"date": "2021-06-21", "rate": 3.229}, {"date": "2021-06-22", "rate": 3.228}, {"date": "2021-06-23", "rate": 3.2}, {"date": "2021-06-24", "rate": 3.198}, {"date": "2021-06-25", "rate": 3.203}, {"date": "2021-06-28", "rate": 3.186}, {"date": "2021-06-29", "rate": 3.182}, {"date": "2021-06-30", "rate": 3.155}, {"date": "2021-07-01", "rate": 3.192}, {"date": "2021-07-02", "rate": 3.159}, {"date": "2021-07-06", "rate": 3.113}, {"date": "2021-07-07", "rate": 3.11}, {"date": "2021-07-08", "rate": 3.082}, {"date": "2021-07-09", "rate": 3.093}, {"date": "2021-07-12", "rate": 3.099}, {"date": "2021-07-13", "rate": 3.135}, {"date": "2021-07-14", "rate": 3.117}, {"date": "2021-07-15", "rate": 3.087}, {"date": "2021-07-16", "rate": 3.076}, {"date": "2021-07-19", "rate": 2.998}, {"date": "2021-07-20", "rate": 2.982}, {"date": "2021-07-21", "rate": 3.038}, {"date": "2021-07-22", "rate": 3.037}, {"date": "2021-07-23", "rate": 3.03}, {"date": "2021-07-26", "rate": 3.019}, {"date": "2021-07-27", "rate": 3.023}, {"date": "2021-07-28", "rate": 3.019}, {"date": "2021-07-29", "rate": 3.02}, {"date": "2021-07-30", "rate": 2.987}, {"date": "2021-08-02", "rate": 2.957}, {"date": "2021-08-03", "rate": 2.96}, {"date": "2021-08-04", "rate": 2.984}, {"date": "2021-08-05", "rate": 2.999}, {"date": "2021-08-06", "rate": 3.041}, {"date": "2021-08-09", "rate": 3.068}, {"date": "2021-08-10", "rate": 3.094}, {"date": "2021-08-11", "rate": 3.09}, {"date": "2021-08-12", "rate": 3.091}, {"date": "2021-08-13", "rate": 3.073}, {"date": "2021-08-16", "rate": 3.043}, {"date": "2021-08-17", "rate": 3.054}, {"date": "2021-08-18", "rate": 3.07}, {"date": "2021-08-19", "rate": 3.048}, {"date": "2021-08-20", "rate": 3.049}, {"date": "2021-08-23", "rate": 3.066}, {"date": "2021-08-24", "rate": 3.057}, {"date": "2021-08-25", "rate": 3.07}, {"date": "2021-08-26", "rate": 3.096}, {"date": "2021-08-27", "rate": 3.062}, {"date": "2021-08-30", "rate": 3.047}, {"date": "2021-08-31", "rate": 3.048}, {"date": "2021-09-01", "rate": 3.058}, {"date": "2021-09-02", "rate": 3.059}, {"date": "2021-09-03", "rate": 3.061}, {"date": "2021-09-07", "rate": 3.085}, {"date": "2021-09-08", "rate": 3.073}, {"date": "2021-09-09", "rate": 3.063}, {"date": "2021-09-10", "rate": 3.065}, {"date": "2021-09-13", "rate": 3.056}, {"date": "2021-09-14", "rate": 3.04}, {"date": "2021-09-15", "rate": 3.032}, {"date": "2021-09-16", "rate": 3.067}, {"date": "2021-09-17", "rate": 3.085}, {"date": "2021-09-20", "rate": 3.07}, {"date": "2021-09-21", "rate": 3.067}, {"date": "2021-09-22", "rate": 3.089}, {"date": "2021-09-23", "rate": 3.135}, {"date": "2021-09-24", "rate": 3.181}, {"date": "2021-09-27", "rate": 3.181}, {"date": "2021-09-28", "rate": 3.21}, {"date": "2021-09-29", "rate": 3.214}, {"date": "2021-09-30", "rate": 3.204}, {"date": "2021-10-01", "rate": 3.174}, {"date": "2021-10-04", "rate": 3.159}, {"date": "2021-10-05", "rate": 3.189}, {"date": "2021-10-06", "rate": 3.202}, {"date": "2021-10-07", "rate": 3.21}, {"date": "2021-10-08", "rate": 3.245}, {"date": "2021-10-12", "rate": 3.267}, {"date": "2021-10-13", "rate": 3.209}, {"date": "2021-10-14", "rate": 3.223}, {"date": "2021-10-15", "rate": 3.248}, {"date": "2021-10-18", "rate": 3.281}, {"date": "2021-10-19", "rate": 3.286}, {"date": "2021-10-20", "rate": 3.271}, {"date": "2021-10-21", "rate": 3.312}, {"date": "2021-10-22", "rate": 3.327}, {"date": "2021-10-25", "rate": 3.319}, {"date": "2021-10-26", "rate": 3.305}, {"date": "2021-10-27", "rate": 3.266}, {"date": "2021-10-28", "rate": 3.263}, {"date": "2021-10-29", "rate": 3.266}, {"date": "2021-11-01", "rate": 3.269}, {"date": "2021-11-02", "rate": 3.234}, {"date": "2021-11-03", "rate": 3.25}, {"date": "2021-11-04", "rate": 3.234}, {"date": "2021-11-05", "rate": 3.171}, {"date": "2021-11-08", "rate": 3.178}, {"date": "2021-11-09", "rate": 3.146}, {"date": "2021-11-10", "rate": 3.212}, {"date": "2021-11-12", "rate": 3.27}, {"date": "2021-11-15", "rate": 3.293}, {"date": "2021-11-16", "rate": 3.303}, {"date": "2021-11-17", "rate": 3.293}, {"date": "2021-11-18", "rate": 3.282}, {"date": "2021-11-19", "rate": 3.257}, {"date": "2021-11-22", "rate": 3.313}, {"date": "2021-11-23", "rate": 3.357}, {"date": "2021-11-24", "rate": 3.363}, {"date": "2021-11-29", "rate": 3.297}, {"date": "2021-11-30", "rate": 3.27}, {"date": "2021-12-01", "rate": 3.284}, {"date": "2021-12-02", "rate": 3.315}, {"date": "2021-12-03", "rate": 3.303}, {"date": "2021-12-06", "rate": 3.307}, {"date": "2021-12-07", "rate": 3.335}, {"date": "2021-12-08", "rate": 3.351}, {"date": "2021-12-09", "rate": 3.342}, {"date": "2021-12-10", "rate": 3.334}, {"date": "2021-12-13", "rate": 3.309}, {"date": "2021-12-14", "rate": 3.32}, {"date": "2021-12-15", "rate": 3.317}, {"date": "2021-12-16", "rate": 3.299}, {"date": "2021-12-17", "rate": 3.29}, {"date": "2021-12-20", "rate": 3.282}, {"date": "2021-12-21", "rate": 3.333}, {"date": "2021-12-22", "rate": 3.334}, {"date": "2021-12-23", "rate": 3.345}, {"date": "2021-12-27", "rate": 3.344}, {"date": "2021-12-28", "rate": 3.328}, {"date": "2021-12-29", "rate": 3.365}, {"date": "2021-12-30", "rate": 3.353}, {"date": "2022-01-03", "rate": 3.409}, {"date": "2022-01-04", "rate": 3.423}, {"date": "2022-01-05", "rate": 3.465}, {"date": "2022-01-06", "rate": 3.542}, {"date": "2022-01-07", "rate": 3.571}, {"date": "2022-01-10", "rate": 3.659}, {"date": "2022-01-11", "rate": 3.638}, {"date": "2022-01-12", "rate": 3.592}, {"date": "2022-01-13", "rate": 3.608}, {"date": "2022-01-14", "rate": 3.667}, {"date": "2022-01-18", "rate": 3.784}, {"date": "2022-01-19", "rate": 3.76}, {"date": "2022-01-20", "rate": 3.748}, {"date": "2022-01-21", "rate": 3.744}, {"date": "2022-01-24", "rate": 3.733}, {"date": "2022-01-25", "rate": 3.732}, {"date": "2022-01-26", "rate": 3.772}, {"date": "2022-01-27", "rate": 3.792}, {"date": "2022-01-28", "rate": 3.779}, {"date": "2022-01-31", "rate": 3.774}, {"date": "2022-02-01", "rate": 3.792}, {"date": "2022-02-02", "rate": 3.784}, {"date": "2022-02-03", "rate": 3.831}, {"date": "2022-02-04", "rate": 3.884}, {"date": "2022-02-07", "rate": 3.93}, {"date": "2022-02-08", "rate": 3.944}, {"date": "2022-02-09", "rate": 3.944}, {"date": "2022-02-10", "rate": 4.071}, {"date": "2022-02-11", "rate": 4.101}, {"date": "2022-02-14", "rate": 4.149}, {"date": "2022-02-15", "rate": 4.16}, {"date": "2022-02-16", "rate": 4.167}, {"date": "2022-02-17", "rate": 4.113}, {"date": "2022-02-18", "rate": 4.121}, {"date": "2022-02-22", "rate": 4.15}, {"date": "2022-02-23", "rate": 4.199}, {"date": "2022-02-24", "rate": 4.181}, {"date": "2022-02-25", "rate": 4.188}, {"date": "2022-02-28", "rate": 4.094}, {"date": "2022-03-01", "rate": 3.98}, {"date": "2022-03-02", "rate": 4.085}, {"date": "2022-03-03", "rate": 4.125}, {"date": "2022-03-04", "rate": 4.043}, {"date": "2022-03-07", "rate": 4.1}, {"date": "2022-03-08", "rate": 4.182}, {"date": "2022-03-09", "rate": 4.211}, {"date": "2022-03-10", "rate": 4.276}, {"date": "2022-03-11", "rate": 4.282}, {"date": "2022-03-14", "rate": 4.426}, {"date": "2022-03-15", "rate": 4.457}, {"date": "2022-03-16", "rate": 4.522}, {"date": "2022-03-17", "rate": 4.509}, {"date": "2022-03-18", "rate": 4.489}, {"date": "2022-03-21", "rate": 4.601}, {"date": "2022-03-22", "rate": 4.712}, {"date": "2022-03-23", "rate": 4.691}, {"date": "2022-03-24", "rate": 4.703}, {"date": "2022-03-25", "rate": 4.865}, {"date": "2022-03-28", "rate": 4.934}, {"date": "2022-03-29", "rate": 4.87}, {"date": "2022-03-30", "rate": 4.811}, {"date": "2022-03-31", "rate": 4.788}, {"date": "2022-04-01", "rate": 4.863}, {"date": "2022-04-04", "rate": 4.866}, {"date": "2022-04-05", "rate": 4.99}, {"date": "2022-04-06", "rate": 5.054}, {"date": "2022-04-07", "rate": 5.061}, {"date": "2022-04-08", "rate": 5.126}, {"date": "2022-04-11", "rate": 5.223}, {"date": "2022-04-12", "rate": 5.152}, {"date": "2022-04-13", "rate": 5.122}, {"date": "2022-04-14", "rate": 5.2}, {"date": "2022-04-15", "rate": 5.268}, {"date": "2022-04-18", "rate": 5.274}, {"date": "2022-04-19", "rate": 5.344}, {"date": "2022-04-20", "rate": 5.324}, {"date": "2022-04-21", "rate": 5.367}, {"date": "2022-04-22", "rate": 5.405}, {"date": "2022-04-25", "rate": 5.342}, {"date": "2022-04-26", "rate": 5.299}, {"date": "2022-04-27", "rate": 5.317}, {"date": "2022-04-28", "rate": 5.357}, {"date": "2022-04-29", "rate": 5.415}, {"date": "2022-05-02", "rate": 5.486}, {"date": "2022-05-03", "rate": 5.522}, {"date": "2022-05-04", "rate": 5.525}, {"date": "2022-05-05", "rate": 5.544}, {"date": "2022-05-06", "rate": 5.593}, {"date": "2022-05-09", "rate": 5.584}, {"date": "2022-05-10", "rate": 5.49}, {"date": "2022-05-11", "rate": 5.512}, {"date": "2022-05-12", "rate": 5.441}, {"date": "2022-05-13", "rate": 5.462}, {"date": "2022-05-16", "rate": 5.439}, {"date": "2022-05-17", "rate": 5.479}, {"date": "2022-05-18", "rate": 5.509}, {"date": "2022-05-19", "rate": 5.423}, {"date": "2022-05-20", "rate": 5.4}, {"date": "2022-05-23", "rate": 5.431}, {"date": "2022-05-24", "rate": 5.323}, {"date": "2022-05-25", "rate": 5.328}, {"date": "2022-05-26", "rate": 5.286}, {"date": "2022-05-27", "rate": 5.27}, {"date": "2022-05-31", "rate": 5.344}, {"date": "2022-06-01", "rate": 5.42}, {"date": "2022-06-02", "rate": 5.402}, {"date": "2022-06-03", "rate": 5.412}, {"date": "2022-06-06", "rate": 5.5}, {"date": "2022-06-07", "rate": 5.502}, {"date": "2022-06-08", "rate": 5.508}, {"date": "2022-06-09", "rate": 5.526}, {"date": "2022-06-10", "rate": 5.661}, {"date": "2022-06-13", "rate": 5.943}, {"date": "2022-06-14", "rate": 6.056}, {"date": "2022-06-15", "rate": 6.034}, {"date": "2022-06-16", "rate": 5.989}, {"date": "2022-06-17", "rate": 5.95}, {"date": "2022-06-21", "rate": 6.007}, {"date": "2022-06-22", "rate": 5.904}, {"date": "2022-06-23", "rate": 5.824}, {"date": "2022-06-24", "rate": 5.849}, {"date": "2022-06-27", "rate": 5.9}, {"date": "2022-06-28", "rate": 5.927}, {"date": "2022-06-29", "rate": 5.895}, {"date": "2022-06-30", "rate": 5.788}, {"date": "2022-07-01", "rate": 5.655}, {"date": "2022-07-05", "rate": 5.612}, {"date": "2022-07-06", "rate": 5.689}, {"date": "2022-07-07", "rate": 5.78}, {"date": "2022-07-08", "rate": 5.829}, {"date": "2022-07-11", "rate": 5.808}, {"date": "2022-07-12", "rate": 5.778}, {"date": "2022-07-13", "rate": 5.782}, {"date": "2022-07-14", "rate": 5.834}, {"date": "2022-07-15", "rate": 5.784}, {"date": "2022-07-18", "rate": 5.788}, {"date": "2022-07-19", "rate": 5.78}, {"date": "2022-07-20", "rate": 5.789}, {"date": "2022-07-21", "rate": 5.723}, {"date": "2022-07-22", "rate": 5.603}, {"date": "2022-07-25", "rate": 5.637}, {"date": "2022-07-26", "rate": 5.589}, {"date": "2022-07-27", "rate": 5.596}, {"date": "2022-07-28", "rate": 5.424}, {"date": "2022-07-29", "rate": 5.302}, {"date": "2022-08-01", "rate": 5.259}, {"date": "2022-08-02", "rate": 5.325}, {"date": "2022-08-03", "rate": 5.448}, {"date": "2022-08-04", "rate": 5.326}, {"date": "2022-08-05", "rate": 5.452}, {"date": "2022-08-08", "rate": 5.442}, {"date": "2022-08-09", "rate": 5.446}, {"date": "2022-08-10", "rate": 5.351}, {"date": "2022-08-11", "rate": 5.397}, {"date": "2022-08-12", "rate": 5.42}, {"date": "2022-08-15", "rate": 5.37}, {"date": "2022-08-16", "rate": 5.412}, {"date": "2022-08-17", "rate": 5.505}, {"date": "2022-08-18", "rate": 5.463}, {"date": "2022-08-19", "rate": 5.598}, {"date": "2022-08-22", "rate": 5.676}, {"date": "2022-08-23", "rate": 5.68}, {"date": "2022-08-24", "rate": 5.741}, {"date": "2022-08-25", "rate": 5.731}, {"date": "2022-08-26", "rate": 5.701}, {"date": "2022-08-29", "rate": 5.793}, {"date": "2022-08-30", "rate": 5.808}, {"date": "2022-08-31", "rate": 5.806}, {"date": "2022-09-01", "rate": 5.911}, {"date": "2022-09-02", "rate": 5.87}, {"date": "2022-09-06", "rate": 5.97}, {"date": "2022-09-07", "rate": 5.95}, {"date": "2022-09-08", "rate": 5.944}, {"date": "2022-09-09", "rate": 5.963}, {"date": "2022-09-12", "rate": 5.965}, {"date": "2022-09-13", "rate": 6.086}, {"date": "2022-09-14", "rate": 6.124}, {"date": "2022-09-15", "rate": 6.166}, {"date": "2022-09-16", "rate": 6.192}, {"date": "2022-09-19", "rate": 6.252}, {"date": "2022-09-20", "rate": 6.338}, {"date": "2022-09-21", "rate": 6.281}, {"date": "2022-09-22", "rate": 6.399}, {"date": "2022-09-23", "rate": 6.511}, {"date": "2022-09-26", "rate": 6.725}, {"date": "2022-09-27", "rate": 6.785}, {"date": "2022-09-28", "rate": 6.643}, {"date": "2022-09-29", "rate": 6.675}, {"date": "2022-09-30", "rate": 6.72}, {"date": "2022-10-03", "rate": 6.639}, {"date": "2022-10-04", "rate": 6.586}, {"date": "2022-10-05", "rate": 6.651}, {"date": "2022-10-06", "rate": 6.744}, {"date": "2022-10-07", "rate": 6.805}, {"date": "2022-10-11", "rate": 6.886}, {"date": "2022-10-12", "rate": 6.939}, {"date": "2022-10-13", "rate": 6.982}, {"date": "2022-10-14", "rate": 6.974}, {"date": "2022-10-17", "rate": 6.98}, {"date": "2022-10-18", "rate": 6.981}, {"date": "2022-10-19", "rate": 7.026}, {"date": "2022-10-20", "rate": 7.104}, {"date": "2022-10-21", "rate": 7.122}, {"date": "2022-10-24", "rate": 7.159}, {"date": "2022-10-25", "rate": 7.071}, {"date": "2022-10-26", "rate": 7.009}, {"date": "2022-10-27", "rate": 6.95}, {"date": "2022-10-28", "rate": 6.967}, {"date": "2022-10-31", "rate": 7.059}, {"date": "2022-11-01", "rate": 7.053}, {"date": "2022-11-02", "rate": 7.042}, {"date": "2022-11-03", "rate": 7.139}, {"date": "2022-11-04", "rate": 7.144}, {"date": "2022-11-07", "rate": 7.151}, {"date": "2022-11-08", "rate": 7.118}, {"date": "2022-11-09", "rate": 7.096}, {"date": "2022-11-10", "rate": 6.732}, {"date": "2022-11-14", "rate": 6.7}, {"date": "2022-11-15", "rate": 6.621}, {"date": "2022-11-16", "rate": 6.593}, {"date": "2022-11-17", "rate": 6.595}, {"date": "2022-11-18", "rate": 6.605}, {"date": "2022-11-21", "rate": 6.61}, {"date": "2022-11-22", "rate": 6.585}, {"date": "2022-11-23", "rate": 6.56}, {"date": "2022-11-28", "rate": 6.524}, {"date": "2022-11-29", "rate": 6.583}, {"date": "2022-11-30", "rate": 6.541}, {"date": "2022-12-01", "rate": 6.39}, {"date": "2022-12-02", "rate": 6.366}, {"date": "2022-12-05", "rate": 6.366}, {"date": "2022-12-06", "rate": 6.433}, {"date": "2022-12-07", "rate": 6.335}, {"date": "2022-12-08", "rate": 6.35}, {"date": "2022-12-09", "rate": 6.408}, {"date": "2022-12-12", "rate": 6.445}, {"date": "2022-12-13", "rate": 6.303}, {"date": "2022-12-14", "rate": 6.308}, {"date": "2022-12-15", "rate": 6.241}, {"date": "2022-12-16", "rate": 6.264}, {"date": "2022-12-19", "rate": 6.316}, {"date": "2022-12-20", "rate": 6.432}, {"date": "2022-12-21", "rate": 6.378}, {"date": "2022-12-22", "rate": 6.379}, {"date": "2022-12-23", "rate": 6.408}, {"date": "2022-12-27", "rate": 6.485}, {"date": "2022-12-28", "rate": 6.508}, {"date": "2022-12-29", "rate": 6.528}, {"date": "2022-12-30", "rate": 6.518}, {"date": "2023-01-03", "rate": 6.527}, {"date": "2023-01-04", "rate": 6.462}, {"date": "2023-01-05", "rate": 6.479}, {"date": "2023-01-06", "rate": 6.366}, {"date": "2023-01-09", "rate": 6.283}, {"date": "2023-01-10", "rate": 6.28}, {"date": "2023-01-11", "rate": 6.239}, {"date": "2023-01-12", "rate": 6.154}, {"date": "2023-01-13", "rate": 6.192}, {"date": "2023-01-17", "rate": 6.202}, {"date": "2023-01-18", "rate": 6.083}, {"date": "2023-01-19", "rate": 6.101}, {"date": "2023-01-20", "rate": 6.204}, {"date": "2023-01-23", "rate": 6.191}, {"date": "2023-01-24", "rate": 6.171}, {"date": "2023-01-25", "rate": 6.13}, {"date": "2023-01-26", "rate": 6.134}, {"date": "2023-01-27", "rate": 6.151}, {"date": "2023-01-30", "rate": 6.151}, {"date": "2023-01-31", "rate": 6.158}, {"date": "2023-02-01", "rate": 6.077}, {"date": "2023-02-02", "rate": 5.979}, {"date": "2023-02-03", "rate": 6.066}, {"date": "2023-02-06", "rate": 6.229}, {"date": "2023-02-07", "rate": 6.263}, {"date": "2023-02-08", "rate": 6.298}, {"date": "2023-02-09", "rate": 6.257}, {"date": "2023-02-10", "rate": 6.333}, {"date": "2023-02-13", "rate": 6.394}, {"date": "2023-02-14", "rate": 6.441}, {"date": "2023-02-15", "rate": 6.486}, {"date": "2023-02-16", "rate": 6.518}, {"date": "2023-02-17", "rate": 6.518}, {"date": "2023-02-21", "rate": 6.638}, {"date": "2023-02-22", "rate": 6.639}, {"date": "2023-02-23", "rate": 6.626}, {"date": "2023-02-24", "rate": 6.696}, {"date": "2023-02-27", "rate": 6.663}, {"date": "2023-02-28", "rate": 6.681}, {"date": "2023-03-01", "rate": 6.723}, {"date": "2023-03-02", "rate": 6.807}, {"date": "2023-03-03", "rate": 6.773}, {"date": "2023-03-06", "rate": 6.731}, {"date": "2023-03-07", "rate": 6.776}, {"date": "2023-03-08", "rate": 6.845}, {"date": "2023-03-09", "rate": 6.799}, {"date": "2023-03-10", "rate": 6.69}, {"date": "2023-03-13", "rate": 6.537}, {"date": "2023-03-14", "rate": 6.616}, {"date": "2023-03-15", "rate": 6.482}, {"date": "2023-03-16", "rate": 6.503}, {"date": "2023-03-17", "rate": 6.423}, {"date": "2023-03-20", "rate": 6.46}, {"date": "2023-03-21", "rate": 6.538}, {"date": "2023-03-22", "rate": 6.475}, {"date": "2023-03-23", "rate": 6.337}, {"date": "2023-03-24", "rate": 6.297}, {"date": "2023-03-27", "rate": 6.369}, {"date": "2023-03-28", "rate": 6.44}, {"date": "2023-03-29", "rate": 6.446}, {"date": "2023-03-30", "rate": 6.439}, {"date": "2023-03-31", "rate": 6.398}, {"date": "2023-04-03", "rate": 6.336}, {"date": "2023-04-04", "rate": 6.273}, {"date": "2023-04-05", "rate": 6.221}, {"date": "2023-04-06", "rate": 6.211}, {"date": "2023-04-07", "rate": 6.257}, {"date": "2023-04-10", "rate": 6.413}, {"date": "2023-04-11", "rate": 6.392}, {"date": "2023-04-12", "rate": 6.331}, {"date": "2023-04-13", "rate": 6.277}, {"date": "2023-04-14", "rate": 6.399}, {"date": "2023-04-17", "rate": 6.475}, {"date": "2023-04-18", "rate": 6.504}, {"date": "2023-04-19", "rate": 6.537}, {"date": "2023-04-20", "rate": 6.472}, {"date": "2023-04-21", "rate": 6.497}, {"date": "2023-04-24", "rate": 6.458}, {"date": "2023-04-25", "rate": 6.39}, {"date": "2023-04-26", "rate": 6.404}, {"date": "2023-04-27", "rate": 6.451}, {"date": "2023-04-28", "rate": 6.447}, {"date": "2023-05-01", "rate": 6.504}, {"date": "2023-05-02", "rate": 6.435}, {"date": "2023-05-03", "rate": 6.372}, {"date": "2023-05-04", "rate": 6.322}, {"date": "2023-05-05", "rate": 6.376}, {"date": "2023-05-08", "rate": 6.435}, {"date": "2023-05-09", "rate": 6.453}, {"date": "2023-05-10", "rate": 6.401}, {"date": "2023-05-11", "rate": 6.338}, {"date": "2023-05-12", "rate": 6.416}, {"date": "2023-05-15", "rate": 6.47}, {"date": "2023-05-16", "rate": 6.536}, {"date": "2023-05-17", "rate": 6.502}, {"date": "2023-05-18", "rate": 6.579}, {"date": "2023-05-19", "rate": 6.632}, {"date": "2023-05-22", "rate": 6.657}, {"date": "2023-05-23", "rate": 6.69}, {"date": "2023-05-24", "rate": 6.736}, {"date": "2023-05-25", "rate": 6.815}, {"date": "2023-05-26", "rate": 6.85}, {"date": "2023-05-30", "rate": 6.8}, {"date": "2023-05-31", "rate": 6.719}, {"date": "2023-06-01", "rate": 6.649}, {"date": "2023-06-02", "rate": 6.698}, {"date": "2023-06-05", "rate": 6.743}, {"date": "2023-06-06", "rate": 6.733}, {"date": "2023-06-07", "rate": 6.746}, {"date": "2023-06-08", "rate": 6.727}, {"date": "2023-06-09", "rate": 6.691}, {"date": "2023-06-12", "rate": 6.689}, {"date": "2023-06-13", "rate": 6.7}, {"date": "2023-06-14", "rate": 6.715}, {"date": "2023-06-15", "rate": 6.665}, {"date": "2023-06-16", "rate": 6.672}, {"date": "2023-06-20", "rate": 6.653}, {"date": "2023-06-21", "rate": 6.669}, {"date": "2023-06-22", "rate": 6.731}, {"date": "2023-06-23", "rate": 6.676}, {"date": "2023-06-26", "rate": 6.69}, {"date": "2023-06-27", "rate": 6.695}, {"date": "2023-06-28", "rate": 6.694}, {"date": "2023-06-29", "rate": 6.78}, {"date": "2023-06-30", "rate": 6.784}, {"date": "2023-07-03", "rate": 6.785}, {"date": "2023-07-05", "rate": 6.916}, {"date": "2023-07-06", "rate": 7.005}, {"date": "2023-07-07", "rate": 7.021}, {"date": "2023-07-10", "rate": 7.0}, {"date": "2023-07-11", "rate": 6.985}, {"date": "2023-07-12", "rate": 6.848}, {"date": "2023-07-13", "rate": 6.737}, {"date": "2023-07-14", "rate": 6.76}, {"date": "2023-07-17", "rate": 6.77}, {"date": "2023-07-18", "rate": 6.742}, {"date": "2023-07-19", "rate": 6.742}, {"date": "2023-07-20", "rate": 6.824}, {"date": "2023-07-21", "rate": 6.818}, {"date": "2023-07-24", "rate": 6.819}, {"date": "2023-07-25", "rate": 6.874}, {"date": "2023-07-26", "rate": 6.847}, {"date": "2023-07-27", "rate": 6.877}, {"date": "2023-07-28", "rate": 6.882}, {"date": "2023-07-31", "rate": 6.881}, {"date": "2023-08-01", "rate": 6.928}, {"date": "2023-08-02", "rate": 7.02}, {"date": "2023-08-03", "rate": 6.973}, {"date": "2023-08-04", "rate": 7.014}, {"date": "2023-08-07", "rate": 6.97}, {"date": "2023-08-08", "rate": 6.983}, {"date": "2023-08-09", "rate": 6.988}, {"date": "2023-08-10", "rate": 6.947}, {"date": "2023-08-11", "rate": 7.042}, {"date": "2023-08-14", "rate": 7.125}, {"date": "2023-08-15", "rate": 7.158}, {"date": "2023-08-16", "rate": 7.183}, {"date": "2023-08-17", "rate": 7.22}, {"date": "2023-08-18", "rate": 7.201}, {"date": "2023-08-21", "rate": 7.274}, {"date": "2023-08-22", "rate": 7.299}, {"date": "2023-08-23", "rate": 7.217}, {"date": "2023-08-24", "rate": 7.278}, {"date": "2023-08-25", "rate": 7.227}, {"date": "2023-08-28", "rate": 7.207}, {"date": "2023-08-29", "rate": 7.131}, {"date": "2023-08-30", "rate": 7.072}, {"date": "2023-08-31", "rate": 7.072}, {"date": "2023-09-01", "rate": 7.084}, {"date": "2023-09-05", "rate": 7.153}, {"date": "2023-09-06", "rate": 7.202}, {"date": "2023-09-07", "rate": 7.208}, {"date": "2023-09-08", "rate": 7.144}, {"date": "2023-09-11", "rate": 7.175}, {"date": "2023-09-12", "rate": 7.19}, {"date": "2023-09-13", "rate": 7.162}, {"date": "2023-09-14", "rate": 7.154}, {"date": "2023-09-15", "rate": 7.185}, {"date": "2023-09-18", "rate": 7.194}, {"date": "2023-09-19", "rate": 7.209}, {"date": "2023-09-20", "rate": 7.222}, {"date": "2023-09-21", "rate": 7.296}, {"date": "2023-09-22", "rate": 7.301}, {"date": "2023-09-25", "rate": 7.345}, {"date": "2023-09-26", "rate": 7.383}, {"date": "2023-09-27", "rate": 7.425}, {"date": "2023-09-28", "rate": 7.434}, {"date": "2023-09-29", "rate": 7.405}, {"date": "2023-10-02", "rate": 7.483}, {"date": "2023-10-03", "rate": 7.595}, {"date": "2023-10-04", "rate": 7.6}, {"date": "2023-10-05", "rate": 7.549}, {"date": "2023-10-06", "rate": 7.631}, {"date": "2023-10-10", "rate": 7.56}, {"date": "2023-10-11", "rate": 7.523}, {"date": "2023-10-12", "rate": 7.574}, {"date": "2023-10-13", "rate": 7.551}, {"date": "2023-10-16", "rate": 7.598}, {"date": "2023-10-17", "rate": 7.695}, {"date": "2023-10-18", "rate": 7.787}, {"date": "2023-10-19", "rate": 7.808}, {"date": "2023-10-20", "rate": 7.776}, {"date": "2023-10-23", "rate": 7.779}, {"date": "2023-10-24", "rate": 7.792}, {"date": "2023-10-25", "rate": 7.83}, {"date": "2023-10-26", "rate": 7.809}, {"date": "2023-10-27", "rate": 7.78}, {"date": "2023-10-30", "rate": 7.778}, {"date": "2023-10-31", "rate": 7.777}, {"date": "2023-11-01", "rate": 7.692}, {"date": "2023-11-02", "rate": 7.576}, {"date": "2023-11-03", "rate": 7.46}, {"date": "2023-11-06", "rate": 7.472}, {"date": "2023-11-07", "rate": 7.452}, {"date": "2023-11-08", "rate": 7.444}, {"date": "2023-11-09", "rate": 7.481}, {"date": "2023-11-13", "rate": 7.534}, {"date": "2023-11-14", "rate": 7.338}, {"date": "2023-11-15", "rate": 7.409}, {"date": "2023-11-16", "rate": 7.322}, {"date": "2023-11-17", "rate": 7.29}, {"date": "2023-11-20", "rate": 7.3}, {"date": "2023-11-21", "rate": 7.283}, {"date": "2023-11-22", "rate": 7.227}, {"date": "2023-11-27", "rate": 7.252}, {"date": "2023-11-28", "rate": 7.219}, {"date": "2023-11-29", "rate": 7.1}, {"date": "2023-11-30", "rate": 7.109}, {"date": "2023-12-01", "rate": 7.077}, {"date": "2023-12-04", "rate": 7.063}, {"date": "2023-12-05", "rate": 6.994}, {"date": "2023-12-06", "rate": 6.96}, {"date": "2023-12-07", "rate": 6.953}, {"date": "2023-12-08", "rate": 6.998}, {"date": "2023-12-11", "rate": 6.999}, {"date": "2023-12-12", "rate": 6.978}, {"date": "2023-12-13", "rate": 6.898}, {"date": "2023-12-14", "rate": 6.682}, {"date": "2023-12-15", "rate": 6.687}, {"date": "2023-12-18", "rate": 6.7}, {"date": "2023-12-19", "rate": 6.676}, {"date": "2023-12-20", "rate": 6.675}, {"date": "2023-12-21", "rate": 6.62}, {"date": "2023-12-22", "rate": 6.633}, {"date": "2023-12-26", "rate": 6.596}, {"date": "2023-12-27", "rate": 6.56}, {"date": "2023-12-28", "rate": 6.565}, {"date": "2023-12-29", "rate": 6.564}, {"date": "2024-01-02", "rate": 6.651}, {"date": "2024-01-03", "rate": 6.683}, {"date": "2024-01-04", "rate": 6.691}, {"date": "2024-01-05", "rate": 6.7}, {"date": "2024-01-08", "rate": 6.669}, {"date": "2024-01-09", "rate": 6.683}, {"date": "2024-01-10", "rate": 6.656}, {"date": "2024-01-11", "rate": 6.662}, {"date": "2024-01-12", "rate": 6.576}, {"date": "2024-01-16", "rate": 6.605}, {"date": "2024-01-17", "rate": 6.709}, {"date": "2024-01-18", "rate": 6.686}, {"date": "2024-01-19", "rate": 6.725}, {"date": "2024-01-22", "rate": 6.65}, {"date": "2024-01-23", "rate": 6.686}, {"date": "2024-01-24", "rate": 6.713}, {"date": "2024-01-25", "rate": 6.696}, {"date": "2024-01-26", "rate": 6.687}, {"date": "2024-01-29", "rate": 6.642}, {"date": "2024-01-30", "rate": 6.599}, {"date": "2024-01-31", "rate": 6.528}, {"date": "2024-02-01", "rate": 6.497}, {"date": "2024-02-02", "rate": 6.597}, {"date": "2024-02-05", "rate": 6.724}, {"date": "2024-02-06", "rate": 6.68}, {"date": "2024-02-07", "rate": 6.672}, {"date": "2024-02-08", "rate": 6.705}, {"date": "2024-02-09", "rate": 6.736}, {"date": "2024-02-12", "rate": 6.723}, {"date": "2024-02-13", "rate": 6.833}, {"date": "2024-02-14", "rate": 6.831}, {"date": "2024-02-15", "rate": 6.813}, {"date": "2024-02-16", "rate": 6.889}, {"date": "2024-02-20", "rate": 6.902}, {"date": "2024-02-21", "rate": 6.933}, {"date": "2024-02-22", "rate": 6.904}, {"date": "2024-02-23", "rate": 6.901}, {"date": "2024-02-26", "rate": 6.915}, {"date": "2024-02-27", "rate": 6.926}, {"date": "2024-02-28", "rate": 6.934}, {"date": "2024-02-29", "rate": 6.885}, {"date": "2024-03-01", "rate": 6.845}, {"date": "2024-03-04", "rate": 6.873}, {"date": "2024-03-05", "rate": 6.82}, {"date": "2024-03-06", "rate": 6.778}, {"date": "2024-03-07", "rate": 6.788}, {"date": "2024-03-08", "rate": 6.713}, {"date": "2024-03-11", "rate": 6.7}, {"date": "2024-03-12", "rate": 6.736}, {"date": "2024-03-13", "rate": 6.76}, {"date": "2024-03-14", "rate": 6.849}, {"date": "2024-03-15", "rate": 6.867}, {"date": "2024-03-18", "rate": 6.901}, {"date": "2024-03-19", "rate": 6.878}, {"date": "2024-03-20", "rate": 6.85}, {"date": "2024-03-21", "rate": 6.807}, {"date": "2024-03-22", "rate": 6.772}, {"date": "2024-03-25", "rate": 6.773}, {"date": "2024-03-26", "rate": 6.764}, {"date": "2024-03-27", "rate": 6.742}, {"date": "2024-03-28", "rate": 6.735}, {"date": "2024-03-29", "rate": 6.731}, {"date": "2024-04-01", "rate": 6.85}, {"date": "2024-04-02", "rate": 6.86}, {"date": "2024-04-03", "rate": 6.874}, {"date": "2024-04-04", "rate": 6.859}, {"date": "2024-04-05", "rate": 6.888}, {"date": "2024-04-08", "rate": 6.903}, {"date": "2024-04-09", "rate": 6.866}, {"date": "2024-04-10", "rate": 7.009}, {"date": "2024-04-11", "rate": 7.081}, {"date": "2024-04-12", "rate": 7.028}, {"date": "2024-04-15", "rate": 7.122}, {"date": "2024-04-16", "rate": 7.206}, {"date": "2024-04-17", "rate": 7.18}, {"date": "2024-04-18", "rate": 7.176}, {"date": "2024-04-19", "rate": 7.172}, {"date": "2024-04-22", "rate": 7.188}, {"date": "2024-04-23", "rate": 7.158}, {"date": "2024-04-24", "rate": 7.204}, {"date": "2024-04-25", "rate": 7.271}, {"date": "2024-04-26", "rate": 7.222}, {"date": "2024-04-29", "rate": 7.186}, {"date": "2024-04-30", "rate": 7.242}, {"date": "2024-05-01", "rate": 7.225}, {"date": "2024-05-02", "rate": 7.207}, {"date": "2024-05-03", "rate": 7.087}, {"date": "2024-05-06", "rate": 7.052}, {"date": "2024-05-07", "rate": 7.034}, {"date": "2024-05-08", "rate": 7.06}, {"date": "2024-05-09", "rate": 7.053}, {"date": "2024-05-10", "rate": 7.045}, {"date": "2024-05-13", "rate": 7.044}, {"date": "2024-05-14", "rate": 7.005}, {"date": "2024-05-15", "rate": 6.875}, {"date": "2024-05-16", "rate": 6.885}, {"date": "2024-05-17", "rate": 6.922}, {"date": "2024-05-20", "rate": 6.954}, {"date": "2024-05-21", "rate": 6.931}, {"date": "2024-05-22", "rate": 6.937}, {"date": "2024-05-23", "rate": 6.985}, {"date": "2024-05-24", "rate": 6.971}, {"date": "2024-05-28", "rate": 6.992}, {"date": "2024-05-29", "rate": 7.103}, {"date": "2024-05-30", "rate": 7.053}, {"date": "2024-05-31", "rate": 7.02}, {"date": "2024-06-03", "rate": 6.958}, {"date": "2024-06-04", "rate": 6.926}, {"date": "2024-06-05", "rate": 6.907}, {"date": "2024-06-06", "rate": 6.881}, {"date": "2024-06-07", "rate": 6.946}, {"date": "2024-06-10", "rate": 6.995}, {"date": "2024-06-11", "rate": 6.987}, {"date": "2024-06-12", "rate": 6.845}, {"date": "2024-06-13", "rate": 6.81}, {"date": "2024-06-14", "rate": 6.834}, {"date": "2024-06-17", "rate": 6.869}, {"date": "2024-06-18", "rate": 6.877}, {"date": "2024-06-20", "rate": 6.85}, {"date": "2024-06-21", "rate": 6.848}, {"date": "2024-06-24", "rate": 6.853}, {"date": "2024-06-25", "rate": 6.852}, {"date": "2024-06-26", "rate": 6.885}, {"date": "2024-06-27", "rate": 6.882}, {"date": "2024-06-28", "rate": 6.938}, {"date": "2024-07-01", "rate": 6.999}, {"date": "2024-07-02", "rate": 6.992}, {"date": "2024-07-03", "rate": 6.96}, {"date": "2024-07-05", "rate": 6.896}, {"date": "2024-07-08", "rate": 6.87}, {"date": "2024-07-09", "rate": 6.881}, {"date": "2024-07-10", "rate": 6.881}, {"date": "2024-07-11", "rate": 6.757}, {"date": "2024-07-12", "rate": 6.766}, {"date": "2024-07-15", "rate": 6.756}, {"date": "2024-07-16", "rate": 6.759}, {"date": "2024-07-17", "rate": 6.734}, {"date": "2024-07-18", "rate": 6.749}, {"date": "2024-07-19", "rate": 6.784}, {"date": "2024-07-22", "rate": 6.782}, {"date": "2024-07-23", "rate": 6.771}, {"date": "2024-07-24", "rate": 6.776}, {"date": "2024-07-25", "rate": 6.774}, {"date": "2024-07-26", "rate": 6.751}, {"date": "2024-07-29", "rate": 6.702}, {"date": "2024-07-30", "rate": 6.708}, {"date": "2024-07-31", "rate": 6.674}, {"date": "2024-08-01", "rate": 6.585}, {"date": "2024-08-02", "rate": 6.429}, {"date": "2024-08-05", "rate": 6.399}, {"date": "2024-08-06", "rate": 6.454}, {"date": "2024-08-07", "rate": 6.506}, {"date": "2024-08-08", "rate": 6.545}, {"date": "2024-08-09", "rate": 6.5}, {"date": "2024-08-12", "rate": 6.513}, {"date": "2024-08-13", "rate": 6.452}, {"date": "2024-08-14", "rate": 6.439}, {"date": "2024-08-15", "rate": 6.51}, {"date": "2024-08-16", "rate": 6.478}, {"date": "2024-08-19", "rate": 6.442}, {"date": "2024-08-20", "rate": 6.435}, {"date": "2024-08-21", "rate": 6.397}, {"date": "2024-08-22", "rate": 6.422}, {"date": "2024-08-23", "rate": 6.394}, {"date": "2024-08-26", "rate": 6.341}, {"date": "2024-08-27", "rate": 6.358}, {"date": "2024-08-28", "rate": 6.303}, {"date": "2024-08-29", "rate": 6.342}, {"date": "2024-08-30", "rate": 6.368}, {"date": "2024-09-03", "rate": 6.344}, {"date": "2024-09-04", "rate": 6.292}, {"date": "2024-09-05", "rate": 6.257}, {"date": "2024-09-06", "rate": 6.218}, {"date": "2024-09-09", "rate": 6.19}, {"date": "2024-09-10", "rate": 6.163}, {"date": "2024-09-11", "rate": 6.103}, {"date": "2024-09-12", "rate": 6.13}, {"date": "2024-09-13", "rate": 6.096}, {"date": "2024-09-16", "rate": 6.038}, {"date": "2024-09-17", "rate": 6.031}, {"date": "2024-09-18", "rate": 6.083}, {"date": "2024-09-19", "rate": 6.088}, {"date": "2024-09-20", "rate": 6.062}, {"date": "2024-09-23", "rate": 6.107}, {"date": "2024-09-24", "rate": 6.113}, {"date": "2024-09-25", "rate": 6.077}, {"date": "2024-09-26", "rate": 6.127}, {"date": "2024-09-27", "rate": 6.059}, {"date": "2024-09-30", "rate": 6.138}, {"date": "2024-10-01", "rate": 6.082}, {"date": "2024-10-02", "rate": 6.132}, {"date": "2024-10-03", "rate": 6.182}, {"date": "2024-10-04", "rate": 6.275}, {"date": "2024-10-07", "rate": 6.33}, {"date": "2024-10-08", "rate": 6.371}, {"date": "2024-10-09", "rate": 6.419}, {"date": "2024-10-10", "rate": 6.403}, {"date": "2024-10-11", "rate": 6.417}, {"date": "2024-10-15", "rate": 6.41}, {"date": "2024-10-16", "rate": 6.433}, {"date": "2024-10-17", "rate": 6.468}, {"date": "2024-10-18", "rate": 6.453}, {"date": "2024-10-21", "rate": 6.556}, {"date": "2024-10-22", "rate": 6.596}, {"date": "2024-10-23", "rate": 6.664}, {"date": "2024-10-24", "rate": 6.641}, {"date": "2024-10-25", "rate": 6.687}, {"date": "2024-10-28", "rate": 6.751}, {"date": "2024-10-29", "rate": 6.791}, {"date": "2024-10-30", "rate": 6.761}, {"date": "2024-10-31", "rate": 6.786}, {"date": "2024-11-01", "rate": 6.756}, {"date": "2024-11-04", "rate": 6.775}, {"date": "2024-11-05", "rate": 6.79}, {"date": "2024-11-06", "rate": 6.842}, {"date": "2024-11-07", "rate": 6.76}, {"date": "2024-11-08", "rate": 6.701}, {"date": "2024-11-12", "rate": 6.822}, {"date": "2024-11-13", "rate": 6.782}, {"date": "2024-11-14", "rate": 6.786}, {"date": "2024-11-15", "rate": 6.826}, {"date": "2024-11-18", "rate": 6.817}, {"date": "2024-11-19", "rate": 6.817}, {"date": "2024-11-20", "rate": 6.849}, {"date": "2024-11-21", "rate": 6.806}, {"date": "2024-11-22", "rate": 6.808}, {"date": "2024-11-25", "rate": 6.743}, {"date": "2024-11-26", "rate": 6.739}, {"date": "2024-11-27", "rate": 6.678}, {"date": "2024-12-02", "rate": 6.673}, {"date": "2024-12-03", "rate": 6.681}, {"date": "2024-12-04", "rate": 6.673}, {"date": "2024-12-05", "rate": 6.686}, {"date": "2024-12-06", "rate": 6.561}, {"date": "2024-12-09", "rate": 6.558}, {"date": "2024-12-10", "rate": 6.618}, {"date": "2024-12-11", "rate": 6.604}, {"date": "2024-12-12", "rate": 6.659}, {"date": "2024-12-13", "rate": 6.706}, {"date": "2024-12-16", "rate": 6.688}, {"date": "2024-12-17", "rate": 6.745}, {"date": "2024-12-18", "rate": 6.785}, {"date": "2024-12-19", "rate": 6.874}, {"date": "2024-12-20", "rate": 6.818}, {"date": "2024-12-23", "rate": 6.829}, {"date": "2024-12-26", "rate": 6.933}, {"date": "2024-12-27", "rate": 6.899}, {"date": "2024-12-30", "rate": 6.833}, {"date": "2024-12-31", "rate": 6.863}, {"date": "2025-01-02", "rate": 6.876}, {"date": "2025-01-03", "rate": 6.9}, {"date": "2025-01-06", "rate": 6.875}, {"date": "2025-01-07", "rate": 6.943}, {"date": "2025-01-08", "rate": 6.96}, {"date": "2025-01-09", "rate": 6.941}, {"date": "2025-01-10", "rate": 7.002}, {"date": "2025-01-13", "rate": 7.035}, {"date": "2025-01-14", "rate": 7.052}, {"date": "2025-01-15", "rate": 6.969}, {"date": "2025-01-16", "rate": 6.928}, {"date": "2025-01-17", "rate": 6.913}, {"date": "2025-01-21", "rate": 6.898}, {"date": "2025-01-22", "rate": 6.901}, {"date": "2025-01-23", "rate": 6.934}, {"date": "2025-01-24", "rate": 6.945}, {"date": "2025-01-27", "rate": 6.881}, {"date": "2025-01-28", "rate": 6.865}, {"date": "2025-01-29", "rate": 6.88}, {"date": "2025-01-30", "rate": 6.858}, {"date": "2025-01-31", "rate": 6.843}, {"date": "2025-02-03", "rate": 6.845}, {"date": "2025-02-04", "rate": 6.871}, {"date": "2025-02-05", "rate": 6.811}, {"date": "2025-02-06", "rate": 6.785}, {"date": "2025-02-07", "rate": 6.794}, {"date": "2025-02-10", "rate": 6.794}, {"date": "2025-02-11", "rate": 6.835}, {"date": "2025-02-12", "rate": 6.905}, {"date": "2025-02-13", "rate": 6.875}, {"date": "2025-02-14", "rate": 6.814}, {"date": "2025-02-18", "rate": 6.804}, {"date": "2025-02-19", "rate": 6.822}, {"date": "2025-02-20", "rate": 6.809}, {"date": "2025-02-21", "rate": 6.768}, {"date": "2025-02-24", "rate": 6.729}, {"date": "2025-02-25", "rate": 6.653}, {"date": "2025-02-26", "rate": 6.644}, {"date": "2025-02-27", "rate": 6.651}, {"date": "2025-02-28", "rate": 6.6}, {"date": "2025-03-03", "rate": 6.548}, {"date": "2025-03-04", "rate": 6.567}, {"date": "2025-03-05", "rate": 6.635}, {"date": "2025-03-06", "rate": 6.628}, {"date": "2025-03-07", "rate": 6.604}, {"date": "2025-03-10", "rate": 6.592}, {"date": "2025-03-11", "rate": 6.609}, {"date": "2025-03-12", "rate": 6.662}, {"date": "2025-03-13", "rate": 6.639}, {"date": "2025-03-14", "rate": 6.611}, {"date": "2025-03-17", "rate": 6.618}, {"date": "2025-03-18", "rate": 6.647}, {"date": "2025-03-19", "rate": 6.657}, {"date": "2025-03-20", "rate": 6.59}, {"date": "2025-03-21", "rate": 6.569}, {"date": "2025-03-24", "rate": 6.624}, {"date": "2025-03-25", "rate": 6.647}, {"date": "2025-03-26", "rate": 6.682}, {"date": "2025-03-27", "rate": 6.65}, {"date": "2025-03-28", "rate": 6.632}, {"date": "2025-03-31", "rate": 6.6}, {"date": "2025-04-01", "rate": 6.568}, {"date": "2025-04-02", "rate": 6.602}, {"date": "2025-04-03", "rate": 6.485}, {"date": "2025-04-04", "rate": 6.481}, {"date": "2025-04-07", "rate": 6.594}, {"date": "2025-04-08", "rate": 6.707}, {"date": "2025-04-09", "rate": 6.825}, {"date": "2025-04-10", "rate": 6.813}, {"date": "2025-04-11", "rate": 6.895}, {"date": "2025-04-14", "rate": 6.796}, {"date": "2025-04-15", "rate": 6.78}, {"date": "2025-04-16", "rate": 6.774}, {"date": "2025-04-17", "rate": 6.783}, {"date": "2025-04-18", "rate": 6.781}, {"date": "2025-04-21", "rate": 6.83}, {"date": "2025-04-22", "rate": 6.828}, {"date": "2025-04-23", "rate": 6.816}, {"date": "2025-04-24", "rate": 6.769}, {"date": "2025-04-25", "rate": 6.756}, {"date": "2025-04-28", "rate": 6.715}, {"date": "2025-04-29", "rate": 6.703}, {"date": "2025-04-30", "rate": 6.709}, {"date": "2025-05-01", "rate": 6.712}, {"date": "2025-05-02", "rate": 6.755}, {"date": "2025-05-05", "rate": 6.769}, {"date": "2025-05-06", "rate": 6.818}, {"date": "2025-05-07", "rate": 6.76}, {"date": "2025-05-08", "rate": 6.776}, {"date": "2025-05-09", "rate": 6.781}, {"date": "2025-05-12", "rate": 6.812}, {"date": "2025-05-13", "rate": 6.815}, {"date": "2025-05-14", "rate": 6.885}, {"date": "2025-05-15", "rate": 6.862}, {"date": "2025-05-16", "rate": 6.818}, {"date": "2025-05-19", "rate": 6.859}, {"date": "2025-05-20", "rate": 6.889}, {"date": "2025-05-21", "rate": 6.925}, {"date": "2025-05-22", "rate": 6.924}, {"date": "2025-05-23", "rate": 6.922}, {"date": "2025-05-27", "rate": 6.882}, {"date": "2025-05-28", "rate": 6.874}, {"date": "2025-05-29", "rate": 6.869}, {"date": "2025-05-30", "rate": 6.842}, {"date": "2025-06-02", "rate": 6.861}, {"date": "2025-06-03", "rate": 6.836}, {"date": "2025-06-04", "rate": 6.824}, {"date": "2025-06-05", "rate": 6.813}, {"date": "2025-06-06", "rate": 6.862}, {"date": "2025-06-09", "rate": 6.874}, {"date": "2025-06-10", "rate": 6.867}, {"date": "2025-06-11", "rate": 6.835}, {"date": "2025-06-12", "rate": 6.781}, {"date": "2025-06-13", "rate": 6.817}, {"date": "2025-06-16", "rate": 6.811}, {"date": "2025-06-17", "rate": 6.817}, {"date": "2025-06-18", "rate": 6.808}, {"date": "2025-06-20", "rate": 6.797}, {"date": "2025-06-23", "rate": 6.762}, {"date": "2025-06-24", "rate": 6.756}, {"date": "2025-06-25", "rate": 6.724}, {"date": "2025-06-26", "rate": 6.675}, {"date": "2025-06-27", "rate": 6.678}, {"date": "2025-06-30", "rate": 6.668}, {"date": "2025-07-01", "rate": 6.644}, {"date": "2025-07-02", "rate": 6.675}, {"date": "2025-07-03", "rate": 6.691}, {"date": "2025-07-07", "rate": 6.724}, {"date": "2025-07-08", "rate": 6.741}, {"date": "2025-07-09", "rate": 6.711}, {"date": "2025-07-10", "rate": 6.699}, {"date": "2025-07-11", "rate": 6.717}, {"date": "2025-07-14", "rate": 6.762}, {"date": "2025-07-15", "rate": 6.792}, {"date": "2025-07-16", "rate": 6.753}, {"date": "2025-07-17", "rate": 6.774}, {"date": "2025-07-18", "rate": 6.742}, {"date": "2025-07-21", "rate": 6.732}, {"date": "2025-07-22", "rate": 6.712}, {"date": "2025-07-23", "rate": 6.729}, {"date": "2025-07-24", "rate": 6.751}, {"date": "2025-07-25", "rate": 6.784}, {"date": "2025-07-28", "rate": 6.734}, {"date": "2025-07-29", "rate": 6.735}, {"date": "2025-07-30", "rate": 6.73}, {"date": "2025-07-31", "rate": 6.722}, {"date": "2025-08-01", "rate": 6.651}, {"date": "2025-08-04", "rate": 6.615}, {"date": "2025-08-05", "rate": 6.615}, {"date": "2025-08-06", "rate": 6.63}, {"date": "2025-08-07", "rate": 6.575}, {"date": "2025-08-08", "rate": 6.627}, {"date": "2025-08-11", "rate": 6.599}, {"date": "2025-08-12", "rate": 6.602}, {"date": "2025-08-13", "rate": 6.552}, {"date": "2025-08-14", "rate": 6.571}, {"date": "2025-08-15", "rate": 6.574}, {"date": "2025-08-18", "rate": 6.59}, {"date": "2025-08-19", "rate": 6.597}, {"date": "2025-08-20", "rate": 6.631}, {"date": "2025-08-21", "rate": 6.63}, {"date": "2025-08-22", "rate": 6.57}, {"date": "2025-08-25", "rate": 6.543}, {"date": "2025-08-26", "rate": 6.531}, {"date": "2025-08-27", "rate": 6.548}, {"date": "2025-08-28", "rate": 6.514}, {"date": "2025-08-29", "rate": 6.494}, {"date": "2025-09-02", "rate": 6.522}, {"date": "2025-09-03", "rate": 6.484}, {"date": "2025-09-04", "rate": 6.46}, {"date": "2025-09-05", "rate": 6.322}, {"date": "2025-09-08", "rate": 6.269}, {"date": "2025-09-09", "rate": 6.315}, {"date": "2025-09-10", "rate": 6.268}, {"date": "2025-09-11", "rate": 6.254}, {"date": "2025-09-12", "rate": 6.263}, {"date": "2025-09-15", "rate": 6.208}, {"date": "2025-09-16", "rate": 6.17}, {"date": "2025-09-17", "rate": 6.195}, {"date": "2025-09-18", "rate": 6.256}, {"date": "2025-09-19", "rate": 6.268}, {"date": "2025-09-22", "rate": 6.296}, {"date": "2025-09-23", "rate": 6.285}, {"date": "2025-09-24", "rate": 6.285}, {"date": "2025-09-25", "rate": 6.345}, {"date": "2025-09-26", "rate": 6.327}, {"date": "2025-09-29", "rate": 6.31}, {"date": "2025-09-30", "rate": 6.315}, {"date": "2025-10-01", "rate": 6.262}, {"date": "2025-10-02", "rate": 6.253}, {"date": "2025-10-03", "rate": 6.244}, {"date": "2025-10-06", "rate": 6.294}, {"date": "2025-10-07", "rate": 6.292}, {"date": "2025-10-08", "rate": 6.277}, {"date": "2025-10-09", "rate": 6.296}, {"date": "2025-10-10", "rate": 6.256}, {"date": "2025-10-14", "rate": 6.218}, {"date": "2025-10-15", "rate": 6.229}, {"date": "2025-10-16", "rate": 6.19}, {"date": "2025-10-17", "rate": 6.164}, {"date": "2025-10-20", "rate": 6.149}, {"date": "2025-10-21", "rate": 6.152}, {"date": "2025-10-22", "rate": 6.159}, {"date": "2025-10-23", "rate": 6.167}, {"date": "2025-10-24", "rate": 6.155}, {"date": "2025-10-27", "rate": 6.156}, {"date": "2025-10-28", "rate": 6.118}, {"date": "2025-10-29", "rate": 6.155}, {"date": "2025-10-30", "rate": 6.19}, {"date": "2025-10-31", "rate": 6.156}, {"date": "2025-11-03", "rate": 6.209}, {"date": "2025-11-04", "rate": 6.214}, {"date": "2025-11-05", "rate": 6.251}, {"date": "2025-11-06", "rate": 6.2}, {"date": "2025-11-07", "rate": 6.203}, {"date": "2025-11-10", "rate": 6.205}, {"date": "2025-11-12", "rate": 6.183}, {"date": "2025-11-13", "rate": 6.215}, {"date": "2025-11-14", "rate": 6.229}, {"date": "2025-11-17", "rate": 6.249}, {"date": "2025-11-18", "rate": 6.23}, {"date": "2025-11-19", "rate": 6.244}, {"date": "2025-11-20", "rate": 6.236}, {"date": "2025-11-21", "rate": 6.224}, {"date": "2025-11-24", "rate": 6.189}, {"date": "2025-11-25", "rate": 6.169}, {"date": "2025-11-26", "rate": 6.144}, {"date": "2025-12-01", "rate": 6.211}, {"date": "2025-12-02", "rate": 6.209}, {"date": "2025-12-03", "rate": 6.17}, {"date": "2025-12-04", "rate": 6.166}, {"date": "2025-12-05", "rate": 6.213}, {"date": "2025-12-08", "rate": 6.238}, {"date": "2025-12-09", "rate": 6.254}, {"date": "2025-12-10", "rate": 6.252}, {"date": "2025-12-11", "rate": 6.182}, {"date": "2025-12-12", "rate": 6.243}, {"date": "2025-12-15", "rate": 6.219}, {"date": "2025-12-16", "rate": 6.205}, {"date": "2025-12-17", "rate": 6.208}, {"date": "2025-12-18", "rate": 6.162}, {"date": "2025-12-19", "rate": 6.174}, {"date": "2025-12-22", "rate": 6.149}, {"date": "2025-12-23", "rate": 6.184}, {"date": "2025-12-26", "rate": 6.145}, {"date": "2025-12-29", "rate": 6.136}, {"date": "2025-12-30", "rate": 6.14}, {"date": "2025-12-31", "rate": 6.159}, {"date": "2026-01-02", "rate": 6.144}, {"date": "2026-01-05", "rate": 6.154}, {"date": "2026-01-06", "rate": 6.163}, {"date": "2026-01-07", "rate": 6.123}, {"date": "2026-01-08", "rate": 6.138}, {"date": "2026-01-09", "rate": 6.037}, {"date": "2026-01-12", "rate": 5.999}, {"date": "2026-01-13", "rate": 6.027}, {"date": "2026-01-14", "rate": 6.02}, {"date": "2026-01-15", "rate": 6.014}, {"date": "2026-01-16", "rate": 6.043}, {"date": "2026-01-20", "rate": 6.097}, {"date": "2026-01-21", "rate": 6.098}, {"date": "2026-01-22", "rate": 6.103}, {"date": "2026-01-23", "rate": 6.088}, {"date": "2026-01-26", "rate": 6.063}, {"date": "2026-01-27", "rate": 6.051}, {"date": "2026-01-28", "rate": 6.064}, {"date": "2026-01-29", "rate": 6.072}, {"date": "2026-01-30", "rate": 6.066}, {"date": "2026-02-02", "rate": 6.092}, {"date": "2026-02-03", "rate": 6.096}, {"date": "2026-02-04", "rate": 6.114}, {"date": "2026-02-05", "rate": 6.098}, {"date": "2026-02-06", "rate": 6.083}, {"date": "2026-02-09", "rate": 6.093}, {"date": "2026-02-10", "rate": 6.038}, {"date": "2026-02-11", "rate": 6.048}, {"date": "2026-02-12", "rate": 6.033}, {"date": "2026-02-13", "rate": 5.976}, {"date": "2026-02-17", "rate": 5.972}, {"date": "2026-02-18", "rate": 6.006}, {"date": "2026-02-19", "rate": 5.997}, {"date": "2026-02-20", "rate": 5.979}, {"date": "2026-02-23", "rate": 5.945}, {"date": "2026-02-24", "rate": 5.942}, {"date": "2026-02-25", "rate": 5.961}, {"date": "2026-02-26", "rate": 5.937}, {"date": "2026-02-27", "rate": 5.901}, {"date": "2026-03-02", "rate": 5.975}, {"date": "2026-03-03", "rate": 6.022}, {"date": "2026-03-04", "rate": 5.993}, {"date": "2026-03-05", "rate": 6.045}, {"date": "2026-03-06", "rate": 6.057}, {"date": "2026-03-09", "rate": 6.083}, {"date": "2026-03-10", "rate": 6.06}, {"date": "2026-03-11", "rate": 6.125}, {"date": "2026-03-12", "rate": 6.19}],
+  trends: {"conv_current": 6.19, "fha_current": 5.958, "as_of": "2026-03-12", "conv_1d": 0.0, "fha_1d": 0.0, "conv_1w": 0.133, "fha_1w": 0.035, "conv_1m": 0.214, "fha_1m": 0.058, "conv_3m": -0.053, "fha_3m": -0.099, "conv_6m": -0.073, "fha_6m": -0.124, "conv_1y": -0.421, "fha_1y": -0.427, "conv_2y": -0.677, "fha_2y": -0.727, "conv_3y": -0.313, "fha_3y": -0.432, "conv_4y": 1.733, "fha_4y": 1.551},
+  commentary_historical: "Rates spent most of the past year declining as inflation cooled and the Fed signaled room to ease \u2014 a real win for buyers. But the recent reversal at 6.19% tells a different story: bond markets are repricing risk, likely driven by hotter data, trade policy noise, or a hawkish Fed tone.",
+  commentary_outlook: "The Fed is on hold until inflation proves it\u2019s beaten. Soft CPI = path to ~5.75% by year-end. Hot tariff-driven inflation = 6.5%+ risk. Monthly CPI and jobs reports are your leading indicators \u2014 watch both.",
+  fha: [{"date": "2021-03-16", "rate": 3.31}, {"date": "2021-03-17", "rate": 3.331}, {"date": "2021-03-18", "rate": 3.37}, {"date": "2021-03-19", "rate": 3.335}, {"date": "2021-03-22", "rate": 3.358}, {"date": "2021-03-23", "rate": 3.33}, {"date": "2021-03-24", "rate": 3.291}, {"date": "2021-03-25", "rate": 3.307}, {"date": "2021-03-26", "rate": 3.31}, {"date": "2021-03-29", "rate": 3.333}, {"date": "2021-03-30", "rate": 3.34}, {"date": "2021-03-31", "rate": 3.331}, {"date": "2021-04-01", "rate": 3.338}, {"date": "2021-04-02", "rate": 3.339}, {"date": "2021-04-05", "rate": 3.358}, {"date": "2021-04-06", "rate": 3.321}, {"date": "2021-04-07", "rate": 3.318}, {"date": "2021-04-08", "rate": 3.29}, {"date": "2021-04-09", "rate": 3.294}, {"date": "2021-04-12", "rate": 3.309}, {"date": "2021-04-13", "rate": 3.251}, {"date": "2021-04-14", "rate": 3.214}, {"date": "2021-04-15", "rate": 3.184}, {"date": "2021-04-16", "rate": 3.22}, {"date": "2021-04-19", "rate": 3.222}, {"date": "2021-04-20", "rate": 3.225}, {"date": "2021-04-21", "rate": 3.18}, {"date": "2021-04-22", "rate": 3.177}, {"date": "2021-04-23", "rate": 3.185}, {"date": "2021-04-26", "rate": 3.202}, {"date": "2021-04-27", "rate": 3.194}, {"date": "2021-04-28", "rate": 3.218}, {"date": "2021-04-29", "rate": 3.255}, {"date": "2021-04-30", "rate": 3.197}, {"date": "2021-05-03", "rate": 3.181}, {"date": "2021-05-04", "rate": 3.161}, {"date": "2021-05-05", "rate": 3.179}, {"date": "2021-05-06", "rate": 3.171}, {"date": "2021-05-07", "rate": 3.14}, {"date": "2021-05-10", "rate": 3.176}, {"date": "2021-05-11", "rate": 3.215}, {"date": "2021-05-12", "rate": 3.251}, {"date": "2021-05-13", "rate": 3.236}, {"date": "2021-05-14", "rate": 3.224}, {"date": "2021-05-17", "rate": 3.228}, {"date": "2021-05-18", "rate": 3.218}, {"date": "2021-05-19", "rate": 3.26}, {"date": "2021-05-20", "rate": 3.244}, {"date": "2021-05-21", "rate": 3.254}, {"date": "2021-05-24", "rate": 3.252}, {"date": "2021-05-25", "rate": 3.215}, {"date": "2021-05-26", "rate": 3.201}, {"date": "2021-05-27", "rate": 3.241}, {"date": "2021-05-28", "rate": 3.231}, {"date": "2021-06-01", "rate": 3.25}, {"date": "2021-06-02", "rate": 3.219}, {"date": "2021-06-03", "rate": 3.281}, {"date": "2021-06-04", "rate": 3.249}, {"date": "2021-06-07", "rate": 3.272}, {"date": "2021-06-08", "rate": 3.237}, {"date": "2021-06-09", "rate": 3.227}, {"date": "2021-06-10", "rate": 3.22}, {"date": "2021-06-11", "rate": 3.198}, {"date": "2021-06-14", "rate": 3.24}, {"date": "2021-06-15", "rate": 3.228}, {"date": "2021-06-16", "rate": 3.274}, {"date": "2021-06-17", "rate": 3.287}, {"date": "2021-06-18", "rate": 3.278}, {"date": "2021-06-21", "rate": 3.319}, {"date": "2021-06-22", "rate": 3.302}, {"date": "2021-06-23", "rate": 3.279}, {"date": "2021-06-24", "rate": 3.264}, {"date": "2021-06-25", "rate": 3.271}, {"date": "2021-06-28", "rate": 3.263}, {"date": "2021-06-29", "rate": 3.25}, {"date": "2021-06-30", "rate": 3.228}, {"date": "2021-07-01", "rate": 3.252}, {"date": "2021-07-02", "rate": 3.199}, {"date": "2021-07-06", "rate": 3.22}, {"date": "2021-07-07", "rate": 3.202}, {"date": "2021-07-08", "rate": 3.179}, {"date": "2021-07-09", "rate": 3.212}, {"date": "2021-07-12", "rate": 3.202}, {"date": "2021-07-13", "rate": 3.222}, {"date": "2021-07-14", "rate": 3.202}, {"date": "2021-07-15", "rate": 3.154}, {"date": "2021-07-16", "rate": 3.163}, {"date": "2021-07-19", "rate": 3.133}, {"date": "2021-07-20", "rate": 3.097}, {"date": "2021-07-21", "rate": 3.16}, {"date": "2021-07-22", "rate": 3.162}, {"date": "2021-07-23", "rate": 3.17}, {"date": "2021-07-26", "rate": 3.132}, {"date": "2021-07-27", "rate": 3.157}, {"date": "2021-07-28", "rate": 3.159}, {"date": "2021-07-29", "rate": 3.147}, {"date": "2021-07-30", "rate": 3.095}, {"date": "2021-08-02", "rate": 3.066}, {"date": "2021-08-03", "rate": 3.053}, {"date": "2021-08-04", "rate": 3.093}, {"date": "2021-08-05", "rate": 3.122}, {"date": "2021-08-06", "rate": 3.146}, {"date": "2021-08-09", "rate": 3.178}, {"date": "2021-08-10", "rate": 3.195}, {"date": "2021-08-11", "rate": 3.2}, {"date": "2021-08-12", "rate": 3.173}, {"date": "2021-08-13", "rate": 3.163}, {"date": "2021-08-16", "rate": 3.154}, {"date": "2021-08-17", "rate": 3.148}, {"date": "2021-08-18", "rate": 3.149}, {"date": "2021-08-19", "rate": 3.14}, {"date": "2021-08-20", "rate": 3.157}, {"date": "2021-08-23", "rate": 3.16}, {"date": "2021-08-24", "rate": 3.139}, {"date": "2021-08-25", "rate": 3.155}, {"date": "2021-08-26", "rate": 3.183}, {"date": "2021-08-27", "rate": 3.138}, {"date": "2021-08-30", "rate": 3.132}, {"date": "2021-08-31", "rate": 3.133}, {"date": "2021-09-01", "rate": 3.16}, {"date": "2021-09-02", "rate": 3.169}, {"date": "2021-09-03", "rate": 3.159}, {"date": "2021-09-07", "rate": 3.172}, {"date": "2021-09-08", "rate": 3.172}, {"date": "2021-09-09", "rate": 3.142}, {"date": "2021-09-10", "rate": 3.143}, {"date": "2021-09-13", "rate": 3.151}, {"date": "2021-09-14", "rate": 3.123}, {"date": "2021-09-15", "rate": 3.12}, {"date": "2021-09-16", "rate": 3.146}, {"date": "2021-09-17", "rate": 3.168}, {"date": "2021-09-20", "rate": 3.158}, {"date": "2021-09-21", "rate": 3.137}, {"date": "2021-09-22", "rate": 3.154}, {"date": "2021-09-23", "rate": 3.2}, {"date": "2021-09-24", "rate": 3.227}, {"date": "2021-09-27", "rate": 3.228}, {"date": "2021-09-28", "rate": 3.246}, {"date": "2021-09-29", "rate": 3.236}, {"date": "2021-09-30", "rate": 3.249}, {"date": "2021-10-01", "rate": 3.177}, {"date": "2021-10-04", "rate": 3.204}, {"date": "2021-10-05", "rate": 3.23}, {"date": "2021-10-06", "rate": 3.26}, {"date": "2021-10-07", "rate": 3.26}, {"date": "2021-10-08", "rate": 3.29}, {"date": "2021-10-12", "rate": 3.31}, {"date": "2021-10-13", "rate": 3.277}, {"date": "2021-10-14", "rate": 3.266}, {"date": "2021-10-15", "rate": 3.29}, {"date": "2021-10-18", "rate": 3.348}, {"date": "2021-10-19", "rate": 3.323}, {"date": "2021-10-20", "rate": 3.34}, {"date": "2021-10-21", "rate": 3.367}, {"date": "2021-10-22", "rate": 3.398}, {"date": "2021-10-25", "rate": 3.396}, {"date": "2021-10-26", "rate": 3.386}, {"date": "2021-10-27", "rate": 3.336}, {"date": "2021-10-28", "rate": 3.331}, {"date": "2021-10-29", "rate": 3.388}, {"date": "2021-11-01", "rate": 3.364}, {"date": "2021-11-02", "rate": 3.343}, {"date": "2021-11-03", "rate": 3.361}, {"date": "2021-11-04", "rate": 3.336}, {"date": "2021-11-05", "rate": 3.269}, {"date": "2021-11-08", "rate": 3.257}, {"date": "2021-11-09", "rate": 3.225}, {"date": "2021-11-10", "rate": 3.332}, {"date": "2021-11-12", "rate": 3.405}, {"date": "2021-11-15", "rate": 3.427}, {"date": "2021-11-16", "rate": 3.416}, {"date": "2021-11-17", "rate": 3.415}, {"date": "2021-11-18", "rate": 3.395}, {"date": "2021-11-19", "rate": 3.375}, {"date": "2021-11-22", "rate": 3.444}, {"date": "2021-11-23", "rate": 3.468}, {"date": "2021-11-24", "rate": 3.455}, {"date": "2021-11-29", "rate": 3.412}, {"date": "2021-11-30", "rate": 3.384}, {"date": "2021-12-01", "rate": 3.388}, {"date": "2021-12-02", "rate": 3.426}, {"date": "2021-12-03", "rate": 3.402}, {"date": "2021-12-06", "rate": 3.423}, {"date": "2021-12-07", "rate": 3.462}, {"date": "2021-12-08", "rate": 3.458}, {"date": "2021-12-09", "rate": 3.45}, {"date": "2021-12-10", "rate": 3.436}, {"date": "2021-12-13", "rate": 3.419}, {"date": "2021-12-14", "rate": 3.419}, {"date": "2021-12-15", "rate": 3.421}, {"date": "2021-12-16", "rate": 3.415}, {"date": "2021-12-17", "rate": 3.394}, {"date": "2021-12-20", "rate": 3.365}, {"date": "2021-12-21", "rate": 3.451}, {"date": "2021-12-22", "rate": 3.391}, {"date": "2021-12-23", "rate": 3.419}, {"date": "2021-12-27", "rate": 3.418}, {"date": "2021-12-28", "rate": 3.386}, {"date": "2021-12-29", "rate": 3.439}, {"date": "2021-12-30", "rate": 3.453}, {"date": "2022-01-03", "rate": 3.49}, {"date": "2022-01-04", "rate": 3.534}, {"date": "2022-01-05", "rate": 3.521}, {"date": "2022-01-06", "rate": 3.62}, {"date": "2022-01-07", "rate": 3.665}, {"date": "2022-01-10", "rate": 3.704}, {"date": "2022-01-11", "rate": 3.708}, {"date": "2022-01-12", "rate": 3.686}, {"date": "2022-01-13", "rate": 3.708}, {"date": "2022-01-14", "rate": 3.743}, {"date": "2022-01-18", "rate": 3.846}, {"date": "2022-01-19", "rate": 3.833}, {"date": "2022-01-20", "rate": 3.841}, {"date": "2022-01-21", "rate": 3.84}, {"date": "2022-01-24", "rate": 3.847}, {"date": "2022-01-25", "rate": 3.826}, {"date": "2022-01-26", "rate": 3.873}, {"date": "2022-01-27", "rate": 3.856}, {"date": "2022-01-28", "rate": 3.869}, {"date": "2022-01-31", "rate": 3.864}, {"date": "2022-02-01", "rate": 3.89}, {"date": "2022-02-02", "rate": 3.862}, {"date": "2022-02-03", "rate": 3.896}, {"date": "2022-02-04", "rate": 3.994}, {"date": "2022-02-07", "rate": 4.011}, {"date": "2022-02-08", "rate": 4.032}, {"date": "2022-02-09", "rate": 4.001}, {"date": "2022-02-10", "rate": 4.122}, {"date": "2022-02-11", "rate": 4.164}, {"date": "2022-02-14", "rate": 4.18}, {"date": "2022-02-15", "rate": 4.208}, {"date": "2022-02-16", "rate": 4.218}, {"date": "2022-02-17", "rate": 4.158}, {"date": "2022-02-18", "rate": 4.188}, {"date": "2022-02-22", "rate": 4.221}, {"date": "2022-02-23", "rate": 4.245}, {"date": "2022-02-24", "rate": 4.229}, {"date": "2022-02-25", "rate": 4.255}, {"date": "2022-02-28", "rate": 4.114}, {"date": "2022-03-01", "rate": 4.043}, {"date": "2022-03-02", "rate": 4.189}, {"date": "2022-03-03", "rate": 4.224}, {"date": "2022-03-04", "rate": 4.117}, {"date": "2022-03-07", "rate": 4.21}, {"date": "2022-03-08", "rate": 4.264}, {"date": "2022-03-09", "rate": 4.301}, {"date": "2022-03-10", "rate": 4.347}, {"date": "2022-03-11", "rate": 4.338}, {"date": "2022-03-14", "rate": 4.426}, {"date": "2022-03-15", "rate": 4.407}, {"date": "2022-03-16", "rate": 4.496}, {"date": "2022-03-17", "rate": 4.506}, {"date": "2022-03-18", "rate": 4.47}, {"date": "2022-03-21", "rate": 4.568}, {"date": "2022-03-22", "rate": 4.657}, {"date": "2022-03-23", "rate": 4.671}, {"date": "2022-03-24", "rate": 4.696}, {"date": "2022-03-25", "rate": 4.786}, {"date": "2022-03-28", "rate": 4.873}, {"date": "2022-03-29", "rate": 4.841}, {"date": "2022-03-30", "rate": 4.802}, {"date": "2022-03-31", "rate": 4.81}, {"date": "2022-04-01", "rate": 4.899}, {"date": "2022-04-04", "rate": 4.87}, {"date": "2022-04-05", "rate": 4.978}, {"date": "2022-04-06", "rate": 4.957}, {"date": "2022-04-07", "rate": 4.983}, {"date": "2022-04-08", "rate": 5.004}, {"date": "2022-04-11", "rate": 5.067}, {"date": "2022-04-12", "rate": 5.028}, {"date": "2022-04-13", "rate": 5.005}, {"date": "2022-04-14", "rate": 5.073}, {"date": "2022-04-15", "rate": 5.072}, {"date": "2022-04-18", "rate": 5.122}, {"date": "2022-04-19", "rate": 5.152}, {"date": "2022-04-20", "rate": 5.17}, {"date": "2022-04-21", "rate": 5.212}, {"date": "2022-04-22", "rate": 5.259}, {"date": "2022-04-25", "rate": 5.24}, {"date": "2022-04-26", "rate": 5.196}, {"date": "2022-04-27", "rate": 5.213}, {"date": "2022-04-28", "rate": 5.239}, {"date": "2022-04-29", "rate": 5.275}, {"date": "2022-05-02", "rate": 5.377}, {"date": "2022-05-03", "rate": 5.378}, {"date": "2022-05-04", "rate": 5.371}, {"date": "2022-05-05", "rate": 5.403}, {"date": "2022-05-06", "rate": 5.429}, {"date": "2022-05-09", "rate": 5.399}, {"date": "2022-05-10", "rate": 5.351}, {"date": "2022-05-11", "rate": 5.373}, {"date": "2022-05-12", "rate": 5.319}, {"date": "2022-05-13", "rate": 5.346}, {"date": "2022-05-16", "rate": 5.355}, {"date": "2022-05-17", "rate": 5.392}, {"date": "2022-05-18", "rate": 5.334}, {"date": "2022-05-19", "rate": 5.325}, {"date": "2022-05-20", "rate": 5.32}, {"date": "2022-05-23", "rate": 5.331}, {"date": "2022-05-24", "rate": 5.248}, {"date": "2022-05-25", "rate": 5.217}, {"date": "2022-05-26", "rate": 5.201}, {"date": "2022-05-27", "rate": 5.185}, {"date": "2022-05-31", "rate": 5.254}, {"date": "2022-06-01", "rate": 5.256}, {"date": "2022-06-02", "rate": 5.309}, {"date": "2022-06-03", "rate": 5.301}, {"date": "2022-06-06", "rate": 5.379}, {"date": "2022-06-07", "rate": 5.361}, {"date": "2022-06-08", "rate": 5.35}, {"date": "2022-06-09", "rate": 5.372}, {"date": "2022-06-10", "rate": 5.486}, {"date": "2022-06-13", "rate": 5.617}, {"date": "2022-06-14", "rate": 5.676}, {"date": "2022-06-15", "rate": 5.681}, {"date": "2022-06-16", "rate": 5.665}, {"date": "2022-06-17", "rate": 5.689}, {"date": "2022-06-21", "rate": 5.751}, {"date": "2022-06-22", "rate": 5.691}, {"date": "2022-06-23", "rate": 5.623}, {"date": "2022-06-24", "rate": 5.643}, {"date": "2022-06-27", "rate": 5.684}, {"date": "2022-06-28", "rate": 5.71}, {"date": "2022-06-29", "rate": 5.69}, {"date": "2022-06-30", "rate": 5.591}, {"date": "2022-07-01", "rate": 5.498}, {"date": "2022-07-05", "rate": 5.487}, {"date": "2022-07-06", "rate": 5.554}, {"date": "2022-07-07", "rate": 5.613}, {"date": "2022-07-08", "rate": 5.653}, {"date": "2022-07-11", "rate": 5.615}, {"date": "2022-07-12", "rate": 5.599}, {"date": "2022-07-13", "rate": 5.615}, {"date": "2022-07-14", "rate": 5.643}, {"date": "2022-07-15", "rate": 5.598}, {"date": "2022-07-18", "rate": 5.654}, {"date": "2022-07-19", "rate": 5.65}, {"date": "2022-07-20", "rate": 5.667}, {"date": "2022-07-21", "rate": 5.575}, {"date": "2022-07-22", "rate": 5.536}, {"date": "2022-07-25", "rate": 5.535}, {"date": "2022-07-26", "rate": 5.522}, {"date": "2022-07-27", "rate": 5.512}, {"date": "2022-07-28", "rate": 5.394}, {"date": "2022-07-29", "rate": 5.269}, {"date": "2022-08-01", "rate": 5.23}, {"date": "2022-08-02", "rate": 5.337}, {"date": "2022-08-03", "rate": 5.408}, {"date": "2022-08-04", "rate": 5.244}, {"date": "2022-08-05", "rate": 5.428}, {"date": "2022-08-08", "rate": 5.373}, {"date": "2022-08-09", "rate": 5.362}, {"date": "2022-08-10", "rate": 5.283}, {"date": "2022-08-11", "rate": 5.328}, {"date": "2022-08-12", "rate": 5.333}, {"date": "2022-08-15", "rate": 5.307}, {"date": "2022-08-16", "rate": 5.35}, {"date": "2022-08-17", "rate": 5.411}, {"date": "2022-08-18", "rate": 5.437}, {"date": "2022-08-19", "rate": 5.477}, {"date": "2022-08-22", "rate": 5.555}, {"date": "2022-08-23", "rate": 5.542}, {"date": "2022-08-24", "rate": 5.571}, {"date": "2022-08-25", "rate": 5.574}, {"date": "2022-08-26", "rate": 5.548}, {"date": "2022-08-29", "rate": 5.642}, {"date": "2022-08-30", "rate": 5.61}, {"date": "2022-08-31", "rate": 5.656}, {"date": "2022-09-01", "rate": 5.716}, {"date": "2022-09-02", "rate": 5.676}, {"date": "2022-09-06", "rate": 5.765}, {"date": "2022-09-07", "rate": 5.758}, {"date": "2022-09-08", "rate": 5.749}, {"date": "2022-09-09", "rate": 5.792}, {"date": "2022-09-12", "rate": 5.796}, {"date": "2022-09-13", "rate": 5.861}, {"date": "2022-09-14", "rate": 5.903}, {"date": "2022-09-15", "rate": 5.927}, {"date": "2022-09-16", "rate": 5.93}, {"date": "2022-09-19", "rate": 6.042}, {"date": "2022-09-20", "rate": 6.074}, {"date": "2022-09-21", "rate": 6.053}, {"date": "2022-09-22", "rate": 6.152}, {"date": "2022-09-23", "rate": 6.226}, {"date": "2022-09-26", "rate": 6.42}, {"date": "2022-09-27", "rate": 6.481}, {"date": "2022-09-28", "rate": 6.372}, {"date": "2022-09-29", "rate": 6.438}, {"date": "2022-09-30", "rate": 6.524}, {"date": "2022-10-03", "rate": 6.459}, {"date": "2022-10-04", "rate": 6.445}, {"date": "2022-10-05", "rate": 6.455}, {"date": "2022-10-06", "rate": 6.526}, {"date": "2022-10-07", "rate": 6.597}, {"date": "2022-10-11", "rate": 6.674}, {"date": "2022-10-12", "rate": 6.7}, {"date": "2022-10-13", "rate": 6.787}, {"date": "2022-10-14", "rate": 6.741}, {"date": "2022-10-17", "rate": 6.772}, {"date": "2022-10-18", "rate": 6.776}, {"date": "2022-10-19", "rate": 6.788}, {"date": "2022-10-20", "rate": 6.893}, {"date": "2022-10-21", "rate": 6.936}, {"date": "2022-10-24", "rate": 6.943}, {"date": "2022-10-25", "rate": 6.831}, {"date": "2022-10-26", "rate": 6.793}, {"date": "2022-10-27", "rate": 6.751}, {"date": "2022-10-28", "rate": 6.801}, {"date": "2022-10-31", "rate": 6.854}, {"date": "2022-11-01", "rate": 6.862}, {"date": "2022-11-02", "rate": 6.832}, {"date": "2022-11-03", "rate": 6.94}, {"date": "2022-11-04", "rate": 6.918}, {"date": "2022-11-07", "rate": 6.92}, {"date": "2022-11-08", "rate": 6.912}, {"date": "2022-11-09", "rate": 6.865}, {"date": "2022-11-10", "rate": 6.642}, {"date": "2022-11-14", "rate": 6.578}, {"date": "2022-11-15", "rate": 6.521}, {"date": "2022-11-16", "rate": 6.509}, {"date": "2022-11-17", "rate": 6.503}, {"date": "2022-11-18", "rate": 6.521}, {"date": "2022-11-21", "rate": 6.477}, {"date": "2022-11-22", "rate": 6.503}, {"date": "2022-11-23", "rate": 6.474}, {"date": "2022-11-28", "rate": 6.511}, {"date": "2022-11-29", "rate": 6.512}, {"date": "2022-11-30", "rate": 6.479}, {"date": "2022-12-01", "rate": 6.363}, {"date": "2022-12-02", "rate": 6.315}, {"date": "2022-12-05", "rate": 6.358}, {"date": "2022-12-06", "rate": 6.398}, {"date": "2022-12-07", "rate": 6.332}, {"date": "2022-12-08", "rate": 6.356}, {"date": "2022-12-09", "rate": 6.415}, {"date": "2022-12-12", "rate": 6.4}, {"date": "2022-12-13", "rate": 6.286}, {"date": "2022-12-14", "rate": 6.339}, {"date": "2022-12-15", "rate": 6.295}, {"date": "2022-12-16", "rate": 6.266}, {"date": "2022-12-19", "rate": 6.346}, {"date": "2022-12-20", "rate": 6.347}, {"date": "2022-12-21", "rate": 6.33}, {"date": "2022-12-22", "rate": 6.344}, {"date": "2022-12-23", "rate": 6.385}, {"date": "2022-12-27", "rate": 6.433}, {"date": "2022-12-28", "rate": 6.455}, {"date": "2022-12-29", "rate": 6.397}, {"date": "2022-12-30", "rate": 6.418}, {"date": "2023-01-03", "rate": 6.379}, {"date": "2023-01-04", "rate": 6.386}, {"date": "2023-01-05", "rate": 6.417}, {"date": "2023-01-06", "rate": 6.331}, {"date": "2023-01-09", "rate": 6.254}, {"date": "2023-01-10", "rate": 6.261}, {"date": "2023-01-11", "rate": 6.256}, {"date": "2023-01-12", "rate": 6.174}, {"date": "2023-01-13", "rate": 6.192}, {"date": "2023-01-17", "rate": 6.168}, {"date": "2023-01-18", "rate": 6.102}, {"date": "2023-01-19", "rate": 6.117}, {"date": "2023-01-20", "rate": 6.246}, {"date": "2023-01-23", "rate": 6.198}, {"date": "2023-01-24", "rate": 6.251}, {"date": "2023-01-25", "rate": 6.165}, {"date": "2023-01-26", "rate": 6.131}, {"date": "2023-01-27", "rate": 6.201}, {"date": "2023-01-30", "rate": 6.12}, {"date": "2023-01-31", "rate": 6.115}, {"date": "2023-02-01", "rate": 6.058}, {"date": "2023-02-02", "rate": 5.943}, {"date": "2023-02-03", "rate": 6.027}, {"date": "2023-02-06", "rate": 6.146}, {"date": "2023-02-07", "rate": 6.173}, {"date": "2023-02-08", "rate": 6.217}, {"date": "2023-02-09", "rate": 6.211}, {"date": "2023-02-10", "rate": 6.29}, {"date": "2023-02-13", "rate": 6.258}, {"date": "2023-02-14", "rate": 6.301}, {"date": "2023-02-15", "rate": 6.381}, {"date": "2023-02-16", "rate": 6.375}, {"date": "2023-02-17", "rate": 6.395}, {"date": "2023-02-21", "rate": 6.492}, {"date": "2023-02-22", "rate": 6.489}, {"date": "2023-02-23", "rate": 6.488}, {"date": "2023-02-24", "rate": 6.543}, {"date": "2023-02-27", "rate": 6.473}, {"date": "2023-02-28", "rate": 6.487}, {"date": "2023-03-01", "rate": 6.557}, {"date": "2023-03-02", "rate": 6.583}, {"date": "2023-03-03", "rate": 6.6}, {"date": "2023-03-06", "rate": 6.518}, {"date": "2023-03-07", "rate": 6.601}, {"date": "2023-03-08", "rate": 6.618}, {"date": "2023-03-09", "rate": 6.639}, {"date": "2023-03-10", "rate": 6.583}, {"date": "2023-03-13", "rate": 6.462}, {"date": "2023-03-14", "rate": 6.525}, {"date": "2023-03-15", "rate": 6.422}, {"date": "2023-03-16", "rate": 6.39}, {"date": "2023-03-17", "rate": 6.324}, {"date": "2023-03-20", "rate": 6.34}, {"date": "2023-03-21", "rate": 6.433}, {"date": "2023-03-22", "rate": 6.365}, {"date": "2023-03-23", "rate": 6.277}, {"date": "2023-03-24", "rate": 6.186}, {"date": "2023-03-27", "rate": 6.298}, {"date": "2023-03-28", "rate": 6.349}, {"date": "2023-03-29", "rate": 6.384}, {"date": "2023-03-30", "rate": 6.353}, {"date": "2023-03-31", "rate": 6.374}, {"date": "2023-04-03", "rate": 6.297}, {"date": "2023-04-04", "rate": 6.212}, {"date": "2023-04-05", "rate": 6.209}, {"date": "2023-04-06", "rate": 6.211}, {"date": "2023-04-07", "rate": 6.251}, {"date": "2023-04-10", "rate": 6.353}, {"date": "2023-04-11", "rate": 6.361}, {"date": "2023-04-12", "rate": 6.326}, {"date": "2023-04-13", "rate": 6.278}, {"date": "2023-04-14", "rate": 6.392}, {"date": "2023-04-17", "rate": 6.408}, {"date": "2023-04-18", "rate": 6.446}, {"date": "2023-04-19", "rate": 6.417}, {"date": "2023-04-20", "rate": 6.452}, {"date": "2023-04-21", "rate": 6.412}, {"date": "2023-04-24", "rate": 6.397}, {"date": "2023-04-25", "rate": 6.329}, {"date": "2023-04-26", "rate": 6.38}, {"date": "2023-04-27", "rate": 6.409}, {"date": "2023-04-28", "rate": 6.38}, {"date": "2023-05-01", "rate": 6.461}, {"date": "2023-05-02", "rate": 6.399}, {"date": "2023-05-03", "rate": 6.323}, {"date": "2023-05-04", "rate": 6.312}, {"date": "2023-05-05", "rate": 6.372}, {"date": "2023-05-08", "rate": 6.381}, {"date": "2023-05-09", "rate": 6.447}, {"date": "2023-05-10", "rate": 6.436}, {"date": "2023-05-11", "rate": 6.341}, {"date": "2023-05-12", "rate": 6.406}, {"date": "2023-05-15", "rate": 6.448}, {"date": "2023-05-16", "rate": 6.468}, {"date": "2023-05-17", "rate": 6.433}, {"date": "2023-05-18", "rate": 6.521}, {"date": "2023-05-19", "rate": 6.559}, {"date": "2023-05-22", "rate": 6.563}, {"date": "2023-05-23", "rate": 6.6}, {"date": "2023-05-24", "rate": 6.603}, {"date": "2023-05-25", "rate": 6.68}, {"date": "2023-05-26", "rate": 6.711}, {"date": "2023-05-30", "rate": 6.7}, {"date": "2023-05-31", "rate": 6.667}, {"date": "2023-06-01", "rate": 6.594}, {"date": "2023-06-02", "rate": 6.609}, {"date": "2023-06-05", "rate": 6.651}, {"date": "2023-06-06", "rate": 6.666}, {"date": "2023-06-07", "rate": 6.647}, {"date": "2023-06-08", "rate": 6.645}, {"date": "2023-06-09", "rate": 6.58}, {"date": "2023-06-12", "rate": 6.619}, {"date": "2023-06-13", "rate": 6.641}, {"date": "2023-06-14", "rate": 6.624}, {"date": "2023-06-15", "rate": 6.635}, {"date": "2023-06-16", "rate": 6.62}, {"date": "2023-06-20", "rate": 6.619}, {"date": "2023-06-21", "rate": 6.658}, {"date": "2023-06-22", "rate": 6.706}, {"date": "2023-06-23", "rate": 6.65}, {"date": "2023-06-26", "rate": 6.627}, {"date": "2023-06-27", "rate": 6.601}, {"date": "2023-06-28", "rate": 6.618}, {"date": "2023-06-29", "rate": 6.723}, {"date": "2023-06-30", "rate": 6.668}, {"date": "2023-07-03", "rate": 6.683}, {"date": "2023-07-05", "rate": 6.777}, {"date": "2023-07-06", "rate": 6.894}, {"date": "2023-07-07", "rate": 6.852}, {"date": "2023-07-10", "rate": 6.846}, {"date": "2023-07-11", "rate": 6.867}, {"date": "2023-07-12", "rate": 6.755}, {"date": "2023-07-13", "rate": 6.697}, {"date": "2023-07-14", "rate": 6.768}, {"date": "2023-07-17", "rate": 6.736}, {"date": "2023-07-18", "rate": 6.694}, {"date": "2023-07-19", "rate": 6.739}, {"date": "2023-07-20", "rate": 6.814}, {"date": "2023-07-21", "rate": 6.754}, {"date": "2023-07-24", "rate": 6.739}, {"date": "2023-07-25", "rate": 6.778}, {"date": "2023-07-26", "rate": 6.751}, {"date": "2023-07-27", "rate": 6.774}, {"date": "2023-07-28", "rate": 6.784}, {"date": "2023-07-31", "rate": 6.784}, {"date": "2023-08-01", "rate": 6.828}, {"date": "2023-08-02", "rate": 6.918}, {"date": "2023-08-03", "rate": 6.864}, {"date": "2023-08-04", "rate": 6.813}, {"date": "2023-08-07", "rate": 6.848}, {"date": "2023-08-08", "rate": 6.863}, {"date": "2023-08-09", "rate": 6.854}, {"date": "2023-08-10", "rate": 6.857}, {"date": "2023-08-11", "rate": 6.917}, {"date": "2023-08-14", "rate": 6.965}, {"date": "2023-08-15", "rate": 7.007}, {"date": "2023-08-16", "rate": 7.005}, {"date": "2023-08-17", "rate": 7.055}, {"date": "2023-08-18", "rate": 6.959}, {"date": "2023-08-21", "rate": 7.055}, {"date": "2023-08-22", "rate": 7.099}, {"date": "2023-08-23", "rate": 6.989}, {"date": "2023-08-24", "rate": 7.088}, {"date": "2023-08-25", "rate": 7.078}, {"date": "2023-08-28", "rate": 6.989}, {"date": "2023-08-29", "rate": 6.957}, {"date": "2023-08-30", "rate": 6.953}, {"date": "2023-08-31", "rate": 6.941}, {"date": "2023-09-01", "rate": 6.919}, {"date": "2023-09-05", "rate": 6.993}, {"date": "2023-09-06", "rate": 7.01}, {"date": "2023-09-07", "rate": 7.042}, {"date": "2023-09-08", "rate": 6.974}, {"date": "2023-09-11", "rate": 6.988}, {"date": "2023-09-12", "rate": 6.969}, {"date": "2023-09-13", "rate": 7.022}, {"date": "2023-09-14", "rate": 6.986}, {"date": "2023-09-15", "rate": 6.978}, {"date": "2023-09-18", "rate": 6.993}, {"date": "2023-09-19", "rate": 7.009}, {"date": "2023-09-20", "rate": 7.043}, {"date": "2023-09-21", "rate": 7.099}, {"date": "2023-09-22", "rate": 7.053}, {"date": "2023-09-25", "rate": 7.116}, {"date": "2023-09-26", "rate": 7.202}, {"date": "2023-09-27", "rate": 7.156}, {"date": "2023-09-28", "rate": 7.217}, {"date": "2023-09-29", "rate": 7.177}, {"date": "2023-10-02", "rate": 7.174}, {"date": "2023-10-03", "rate": 7.285}, {"date": "2023-10-04", "rate": 7.332}, {"date": "2023-10-05", "rate": 7.31}, {"date": "2023-10-06", "rate": 7.27}, {"date": "2023-10-10", "rate": 7.257}, {"date": "2023-10-11", "rate": 7.26}, {"date": "2023-10-12", "rate": 7.313}, {"date": "2023-10-13", "rate": 7.259}, {"date": "2023-10-16", "rate": 7.283}, {"date": "2023-10-17", "rate": 7.327}, {"date": "2023-10-18", "rate": 7.45}, {"date": "2023-10-19", "rate": 7.456}, {"date": "2023-10-20", "rate": 7.491}, {"date": "2023-10-23", "rate": 7.436}, {"date": "2023-10-24", "rate": 7.485}, {"date": "2023-10-25", "rate": 7.496}, {"date": "2023-10-26", "rate": 7.478}, {"date": "2023-10-27", "rate": 7.45}, {"date": "2023-10-30", "rate": 7.491}, {"date": "2023-10-31", "rate": 7.437}, {"date": "2023-11-01", "rate": 7.396}, {"date": "2023-11-02", "rate": 7.294}, {"date": "2023-11-03", "rate": 7.203}, {"date": "2023-11-06", "rate": 7.232}, {"date": "2023-11-07", "rate": 7.28}, {"date": "2023-11-08", "rate": 7.275}, {"date": "2023-11-09", "rate": 7.235}, {"date": "2023-11-13", "rate": 7.33}, {"date": "2023-11-14", "rate": 7.142}, {"date": "2023-11-15", "rate": 7.215}, {"date": "2023-11-16", "rate": 7.119}, {"date": "2023-11-17", "rate": 7.16}, {"date": "2023-11-20", "rate": 7.104}, {"date": "2023-11-21", "rate": 7.043}, {"date": "2023-11-22", "rate": 7.033}, {"date": "2023-11-27", "rate": 7.019}, {"date": "2023-11-28", "rate": 6.962}, {"date": "2023-11-29", "rate": 6.919}, {"date": "2023-11-30", "rate": 6.896}, {"date": "2023-12-01", "rate": 6.84}, {"date": "2023-12-04", "rate": 6.857}, {"date": "2023-12-05", "rate": 6.798}, {"date": "2023-12-06", "rate": 6.801}, {"date": "2023-12-07", "rate": 6.82}, {"date": "2023-12-08", "rate": 6.824}, {"date": "2023-12-11", "rate": 6.829}, {"date": "2023-12-12", "rate": 6.759}, {"date": "2023-12-13", "rate": 6.713}, {"date": "2023-12-14", "rate": 6.55}, {"date": "2023-12-15", "rate": 6.597}, {"date": "2023-12-18", "rate": 6.533}, {"date": "2023-12-19", "rate": 6.531}, {"date": "2023-12-20", "rate": 6.591}, {"date": "2023-12-21", "rate": 6.502}, {"date": "2023-12-22", "rate": 6.494}, {"date": "2023-12-26", "rate": 6.483}, {"date": "2023-12-27", "rate": 6.449}, {"date": "2023-12-28", "rate": 6.41}, {"date": "2023-12-29", "rate": 6.485}, {"date": "2024-01-02", "rate": 6.528}, {"date": "2024-01-03", "rate": 6.504}, {"date": "2024-01-04", "rate": 6.575}, {"date": "2024-01-05", "rate": 6.566}, {"date": "2024-01-08", "rate": 6.474}, {"date": "2024-01-09", "rate": 6.496}, {"date": "2024-01-10", "rate": 6.503}, {"date": "2024-01-11", "rate": 6.446}, {"date": "2024-01-12", "rate": 6.376}, {"date": "2024-01-16", "rate": 6.455}, {"date": "2024-01-17", "rate": 6.457}, {"date": "2024-01-18", "rate": 6.505}, {"date": "2024-01-19", "rate": 6.511}, {"date": "2024-01-22", "rate": 6.479}, {"date": "2024-01-23", "rate": 6.5}, {"date": "2024-01-24", "rate": 6.487}, {"date": "2024-01-25", "rate": 6.473}, {"date": "2024-01-26", "rate": 6.429}, {"date": "2024-01-29", "rate": 6.404}, {"date": "2024-01-30", "rate": 6.37}, {"date": "2024-01-31", "rate": 6.37}, {"date": "2024-02-01", "rate": 6.34}, {"date": "2024-02-02", "rate": 6.463}, {"date": "2024-02-05", "rate": 6.527}, {"date": "2024-02-06", "rate": 6.507}, {"date": "2024-02-07", "rate": 6.482}, {"date": "2024-02-08", "rate": 6.535}, {"date": "2024-02-09", "rate": 6.539}, {"date": "2024-02-12", "rate": 6.534}, {"date": "2024-02-13", "rate": 6.65}, {"date": "2024-02-14", "rate": 6.638}, {"date": "2024-02-15", "rate": 6.621}, {"date": "2024-02-16", "rate": 6.75}, {"date": "2024-02-20", "rate": 6.681}, {"date": "2024-02-21", "rate": 6.691}, {"date": "2024-02-22", "rate": 6.624}, {"date": "2024-02-23", "rate": 6.717}, {"date": "2024-02-26", "rate": 6.699}, {"date": "2024-02-27", "rate": 6.688}, {"date": "2024-02-28", "rate": 6.711}, {"date": "2024-02-29", "rate": 6.655}, {"date": "2024-03-01", "rate": 6.675}, {"date": "2024-03-04", "rate": 6.669}, {"date": "2024-03-05", "rate": 6.581}, {"date": "2024-03-06", "rate": 6.625}, {"date": "2024-03-07", "rate": 6.585}, {"date": "2024-03-08", "rate": 6.554}, {"date": "2024-03-11", "rate": 6.51}, {"date": "2024-03-12", "rate": 6.571}, {"date": "2024-03-13", "rate": 6.642}, {"date": "2024-03-14", "rate": 6.66}, {"date": "2024-03-15", "rate": 6.685}, {"date": "2024-03-18", "rate": 6.715}, {"date": "2024-03-19", "rate": 6.735}, {"date": "2024-03-20", "rate": 6.687}, {"date": "2024-03-21", "rate": 6.646}, {"date": "2024-03-22", "rate": 6.617}, {"date": "2024-03-25", "rate": 6.607}, {"date": "2024-03-26", "rate": 6.614}, {"date": "2024-03-27", "rate": 6.555}, {"date": "2024-03-28", "rate": 6.571}, {"date": "2024-03-29", "rate": 6.455}, {"date": "2024-04-01", "rate": 6.702}, {"date": "2024-04-02", "rate": 6.636}, {"date": "2024-04-03", "rate": 6.668}, {"date": "2024-04-04", "rate": 6.646}, {"date": "2024-04-05", "rate": 6.671}, {"date": "2024-04-08", "rate": 6.668}, {"date": "2024-04-09", "rate": 6.657}, {"date": "2024-04-10", "rate": 6.823}, {"date": "2024-04-11", "rate": 6.809}, {"date": "2024-04-12", "rate": 6.773}, {"date": "2024-04-15", "rate": 6.805}, {"date": "2024-04-16", "rate": 6.898}, {"date": "2024-04-17", "rate": 6.834}, {"date": "2024-04-18", "rate": 6.882}, {"date": "2024-04-19", "rate": 6.887}, {"date": "2024-04-22", "rate": 6.859}, {"date": "2024-04-23", "rate": 6.843}, {"date": "2024-04-24", "rate": 6.885}, {"date": "2024-04-25", "rate": 6.915}, {"date": "2024-04-26", "rate": 6.86}, {"date": "2024-04-29", "rate": 6.91}, {"date": "2024-04-30", "rate": 6.909}, {"date": "2024-05-01", "rate": 6.866}, {"date": "2024-05-02", "rate": 6.89}, {"date": "2024-05-03", "rate": 6.803}, {"date": "2024-05-06", "rate": 6.748}, {"date": "2024-05-07", "rate": 6.792}, {"date": "2024-05-08", "rate": 6.857}, {"date": "2024-05-09", "rate": 6.746}, {"date": "2024-05-10", "rate": 6.779}, {"date": "2024-05-13", "rate": 6.786}, {"date": "2024-05-14", "rate": 6.781}, {"date": "2024-05-15", "rate": 6.714}, {"date": "2024-05-16", "rate": 6.695}, {"date": "2024-05-17", "rate": 6.732}, {"date": "2024-05-20", "rate": 6.743}, {"date": "2024-05-21", "rate": 6.7}, {"date": "2024-05-22", "rate": 6.752}, {"date": "2024-05-23", "rate": 6.787}, {"date": "2024-05-24", "rate": 6.726}, {"date": "2024-05-28", "rate": 6.742}, {"date": "2024-05-29", "rate": 6.8}, {"date": "2024-05-30", "rate": 6.811}, {"date": "2024-05-31", "rate": 6.749}, {"date": "2024-06-03", "rate": 6.726}, {"date": "2024-06-04", "rate": 6.681}, {"date": "2024-06-05", "rate": 6.713}, {"date": "2024-06-06", "rate": 6.648}, {"date": "2024-06-07", "rate": 6.735}, {"date": "2024-06-10", "rate": 6.762}, {"date": "2024-06-11", "rate": 6.758}, {"date": "2024-06-12", "rate": 6.652}, {"date": "2024-06-13", "rate": 6.677}, {"date": "2024-06-14", "rate": 6.64}, {"date": "2024-06-17", "rate": 6.661}, {"date": "2024-06-18", "rate": 6.732}, {"date": "2024-06-20", "rate": 6.706}, {"date": "2024-06-21", "rate": 6.68}, {"date": "2024-06-24", "rate": 6.679}, {"date": "2024-06-25", "rate": 6.691}, {"date": "2024-06-26", "rate": 6.67}, {"date": "2024-06-27", "rate": 6.712}, {"date": "2024-06-28", "rate": 6.665}, {"date": "2024-07-01", "rate": 6.746}, {"date": "2024-07-02", "rate": 6.743}, {"date": "2024-07-03", "rate": 6.737}, {"date": "2024-07-05", "rate": 6.669}, {"date": "2024-07-08", "rate": 6.695}, {"date": "2024-07-09", "rate": 6.657}, {"date": "2024-07-10", "rate": 6.694}, {"date": "2024-07-11", "rate": 6.573}, {"date": "2024-07-12", "rate": 6.601}, {"date": "2024-07-15", "rate": 6.583}, {"date": "2024-07-16", "rate": 6.594}, {"date": "2024-07-17", "rate": 6.558}, {"date": "2024-07-18", "rate": 6.626}, {"date": "2024-07-19", "rate": 6.589}, {"date": "2024-07-22", "rate": 6.584}, {"date": "2024-07-23", "rate": 6.551}, {"date": "2024-07-24", "rate": 6.627}, {"date": "2024-07-25", "rate": 6.608}, {"date": "2024-07-26", "rate": 6.567}, {"date": "2024-07-29", "rate": 6.512}, {"date": "2024-07-30", "rate": 6.547}, {"date": "2024-07-31", "rate": 6.532}, {"date": "2024-08-01", "rate": 6.463}, {"date": "2024-08-02", "rate": 6.287}, {"date": "2024-08-05", "rate": 6.258}, {"date": "2024-08-06", "rate": 6.267}, {"date": "2024-08-07", "rate": 6.329}, {"date": "2024-08-08", "rate": 6.406}, {"date": "2024-08-09", "rate": 6.349}, {"date": "2024-08-12", "rate": 6.357}, {"date": "2024-08-13", "rate": 6.331}, {"date": "2024-08-14", "rate": 6.307}, {"date": "2024-08-15", "rate": 6.308}, {"date": "2024-08-16", "rate": 6.315}, {"date": "2024-08-19", "rate": 6.274}, {"date": "2024-08-20", "rate": 6.241}, {"date": "2024-08-21", "rate": 6.152}, {"date": "2024-08-22", "rate": 6.234}, {"date": "2024-08-23", "rate": 6.171}, {"date": "2024-08-26", "rate": 6.128}, {"date": "2024-08-27", "rate": 6.152}, {"date": "2024-08-28", "rate": 6.14}, {"date": "2024-08-29", "rate": 6.123}, {"date": "2024-08-30", "rate": 6.13}, {"date": "2024-09-03", "rate": 6.107}, {"date": "2024-09-04", "rate": 6.103}, {"date": "2024-09-05", "rate": 6.017}, {"date": "2024-09-06", "rate": 5.961}, {"date": "2024-09-09", "rate": 5.991}, {"date": "2024-09-10", "rate": 5.962}, {"date": "2024-09-11", "rate": 5.922}, {"date": "2024-09-12", "rate": 5.946}, {"date": "2024-09-13", "rate": 5.929}, {"date": "2024-09-16", "rate": 5.837}, {"date": "2024-09-17", "rate": 5.883}, {"date": "2024-09-18", "rate": 5.906}, {"date": "2024-09-19", "rate": 5.869}, {"date": "2024-09-20", "rate": 5.825}, {"date": "2024-09-23", "rate": 5.9}, {"date": "2024-09-24", "rate": 5.93}, {"date": "2024-09-25", "rate": 5.818}, {"date": "2024-09-26", "rate": 5.875}, {"date": "2024-09-27", "rate": 5.874}, {"date": "2024-09-30", "rate": 5.883}, {"date": "2024-10-01", "rate": 5.842}, {"date": "2024-10-02", "rate": 5.922}, {"date": "2024-10-03", "rate": 5.894}, {"date": "2024-10-04", "rate": 6.052}, {"date": "2024-10-07", "rate": 6.021}, {"date": "2024-10-08", "rate": 6.075}, {"date": "2024-10-09", "rate": 6.12}, {"date": "2024-10-10", "rate": 6.185}, {"date": "2024-10-11", "rate": 6.153}, {"date": "2024-10-15", "rate": 6.119}, {"date": "2024-10-16", "rate": 6.146}, {"date": "2024-10-17", "rate": 6.132}, {"date": "2024-10-18", "rate": 6.164}, {"date": "2024-10-21", "rate": 6.175}, {"date": "2024-10-22", "rate": 6.245}, {"date": "2024-10-23", "rate": 6.288}, {"date": "2024-10-24", "rate": 6.304}, {"date": "2024-10-25", "rate": 6.338}, {"date": "2024-10-28", "rate": 6.342}, {"date": "2024-10-29", "rate": 6.379}, {"date": "2024-10-30", "rate": 6.402}, {"date": "2024-10-31", "rate": 6.425}, {"date": "2024-11-01", "rate": 6.445}, {"date": "2024-11-04", "rate": 6.415}, {"date": "2024-11-05", "rate": 6.447}, {"date": "2024-11-06", "rate": 6.463}, {"date": "2024-11-07", "rate": 6.376}, {"date": "2024-11-08", "rate": 6.346}, {"date": "2024-11-12", "rate": 6.426}, {"date": "2024-11-13", "rate": 6.427}, {"date": "2024-11-14", "rate": 6.42}, {"date": "2024-11-15", "rate": 6.439}, {"date": "2024-11-18", "rate": 6.406}, {"date": "2024-11-19", "rate": 6.432}, {"date": "2024-11-20", "rate": 6.524}, {"date": "2024-11-21", "rate": 6.567}, {"date": "2024-11-22", "rate": 6.524}, {"date": "2024-11-25", "rate": 6.415}, {"date": "2024-11-26", "rate": 6.439}, {"date": "2024-11-27", "rate": 6.359}, {"date": "2024-12-02", "rate": 6.369}, {"date": "2024-12-03", "rate": 6.343}, {"date": "2024-12-04", "rate": 6.393}, {"date": "2024-12-05", "rate": 6.348}, {"date": "2024-12-06", "rate": 6.276}, {"date": "2024-12-09", "rate": 6.208}, {"date": "2024-12-10", "rate": 6.304}, {"date": "2024-12-11", "rate": 6.272}, {"date": "2024-12-12", "rate": 6.323}, {"date": "2024-12-13", "rate": 6.374}, {"date": "2024-12-16", "rate": 6.364}, {"date": "2024-12-17", "rate": 6.443}, {"date": "2024-12-18", "rate": 6.476}, {"date": "2024-12-19", "rate": 6.517}, {"date": "2024-12-20", "rate": 6.421}, {"date": "2024-12-23", "rate": 6.483}, {"date": "2024-12-26", "rate": 6.561}, {"date": "2024-12-27", "rate": 6.513}, {"date": "2024-12-30", "rate": 6.499}, {"date": "2024-12-31", "rate": 6.474}, {"date": "2025-01-02", "rate": 6.547}, {"date": "2025-01-03", "rate": 6.537}, {"date": "2025-01-06", "rate": 6.526}, {"date": "2025-01-07", "rate": 6.587}, {"date": "2025-01-08", "rate": 6.603}, {"date": "2025-01-09", "rate": 6.595}, {"date": "2025-01-10", "rate": 6.641}, {"date": "2025-01-13", "rate": 6.595}, {"date": "2025-01-14", "rate": 6.623}, {"date": "2025-01-15", "rate": 6.598}, {"date": "2025-01-16", "rate": 6.595}, {"date": "2025-01-17", "rate": 6.544}, {"date": "2025-01-21", "rate": 6.571}, {"date": "2025-01-22", "rate": 6.579}, {"date": "2025-01-23", "rate": 6.637}, {"date": "2025-01-24", "rate": 6.612}, {"date": "2025-01-27", "rate": 6.495}, {"date": "2025-01-28", "rate": 6.497}, {"date": "2025-01-29", "rate": 6.515}, {"date": "2025-01-30", "rate": 6.496}, {"date": "2025-01-31", "rate": 6.501}, {"date": "2025-02-03", "rate": 6.507}, {"date": "2025-02-04", "rate": 6.557}, {"date": "2025-02-05", "rate": 6.539}, {"date": "2025-02-06", "rate": 6.514}, {"date": "2025-02-07", "rate": 6.526}, {"date": "2025-02-10", "rate": 6.472}, {"date": "2025-02-11", "rate": 6.467}, {"date": "2025-02-12", "rate": 6.552}, {"date": "2025-02-13", "rate": 6.57}, {"date": "2025-02-14", "rate": 6.474}, {"date": "2025-02-18", "rate": 6.513}, {"date": "2025-02-19", "rate": 6.459}, {"date": "2025-02-20", "rate": 6.559}, {"date": "2025-02-21", "rate": 6.465}, {"date": "2025-02-24", "rate": 6.384}, {"date": "2025-02-25", "rate": 6.305}, {"date": "2025-02-26", "rate": 6.356}, {"date": "2025-02-27", "rate": 6.313}, {"date": "2025-02-28", "rate": 6.347}, {"date": "2025-03-03", "rate": 6.27}, {"date": "2025-03-04", "rate": 6.283}, {"date": "2025-03-05", "rate": 6.359}, {"date": "2025-03-06", "rate": 6.347}, {"date": "2025-03-07", "rate": 6.315}, {"date": "2025-03-10", "rate": 6.307}, {"date": "2025-03-11", "rate": 6.35}, {"date": "2025-03-12", "rate": 6.358}, {"date": "2025-03-13", "rate": 6.364}, {"date": "2025-03-14", "rate": 6.385}, {"date": "2025-03-17", "rate": 6.29}, {"date": "2025-03-18", "rate": 6.342}, {"date": "2025-03-19", "rate": 6.348}, {"date": "2025-03-20", "rate": 6.359}, {"date": "2025-03-21", "rate": 6.421}, {"date": "2025-03-24", "rate": 6.315}, {"date": "2025-03-25", "rate": 6.364}, {"date": "2025-03-26", "rate": 6.382}, {"date": "2025-03-27", "rate": 6.403}, {"date": "2025-03-28", "rate": 6.318}, {"date": "2025-03-31", "rate": 6.269}, {"date": "2025-04-01", "rate": 6.263}, {"date": "2025-04-02", "rate": 6.296}, {"date": "2025-04-03", "rate": 6.207}, {"date": "2025-04-04", "rate": 6.231}, {"date": "2025-04-07", "rate": 6.267}, {"date": "2025-04-08", "rate": 6.408}, {"date": "2025-04-09", "rate": 6.496}, {"date": "2025-04-10", "rate": 6.543}, {"date": "2025-04-11", "rate": 6.605}, {"date": "2025-04-14", "rate": 6.429}, {"date": "2025-04-15", "rate": 6.465}, {"date": "2025-04-16", "rate": 6.513}, {"date": "2025-04-17", "rate": 6.501}, {"date": "2025-04-18", "rate": 6.425}, {"date": "2025-04-21", "rate": 6.536}, {"date": "2025-04-22", "rate": 6.555}, {"date": "2025-04-23", "rate": 6.525}, {"date": "2025-04-24", "rate": 6.513}, {"date": "2025-04-25", "rate": 6.492}, {"date": "2025-04-28", "rate": 6.388}, {"date": "2025-04-29", "rate": 6.384}, {"date": "2025-04-30", "rate": 6.436}, {"date": "2025-05-01", "rate": 6.423}, {"date": "2025-05-02", "rate": 6.501}, {"date": "2025-05-05", "rate": 6.464}, {"date": "2025-05-06", "rate": 6.488}, {"date": "2025-05-07", "rate": 6.477}, {"date": "2025-05-08", "rate": 6.48}, {"date": "2025-05-09", "rate": 6.493}, {"date": "2025-05-12", "rate": 6.491}, {"date": "2025-05-13", "rate": 6.53}, {"date": "2025-05-14", "rate": 6.596}, {"date": "2025-05-15", "rate": 6.545}, {"date": "2025-05-16", "rate": 6.552}, {"date": "2025-05-19", "rate": 6.571}, {"date": "2025-05-20", "rate": 6.582}, {"date": "2025-05-21", "rate": 6.641}, {"date": "2025-05-22", "rate": 6.652}, {"date": "2025-05-23", "rate": 6.655}, {"date": "2025-05-27", "rate": 6.532}, {"date": "2025-05-28", "rate": 6.566}, {"date": "2025-05-29", "rate": 6.609}, {"date": "2025-05-30", "rate": 6.53}, {"date": "2025-06-02", "rate": 6.589}, {"date": "2025-06-03", "rate": 6.595}, {"date": "2025-06-04", "rate": 6.567}, {"date": "2025-06-05", "rate": 6.579}, {"date": "2025-06-06", "rate": 6.615}, {"date": "2025-06-09", "rate": 6.61}, {"date": "2025-06-10", "rate": 6.561}, {"date": "2025-06-11", "rate": 6.592}, {"date": "2025-06-12", "rate": 6.545}, {"date": "2025-06-13", "rate": 6.603}, {"date": "2025-06-16", "rate": 6.504}, {"date": "2025-06-17", "rate": 6.585}, {"date": "2025-06-18", "rate": 6.587}, {"date": "2025-06-20", "rate": 6.656}, {"date": "2025-06-23", "rate": 6.519}, {"date": "2025-06-24", "rate": 6.512}, {"date": "2025-06-25", "rate": 6.467}, {"date": "2025-06-26", "rate": 6.474}, {"date": "2025-06-27", "rate": 6.457}, {"date": "2025-06-30", "rate": 6.467}, {"date": "2025-07-01", "rate": 6.413}, {"date": "2025-07-02", "rate": 6.482}, {"date": "2025-07-03", "rate": 6.464}, {"date": "2025-07-07", "rate": 6.525}, {"date": "2025-07-08", "rate": 6.564}, {"date": "2025-07-09", "rate": 6.528}, {"date": "2025-07-10", "rate": 6.475}, {"date": "2025-07-11", "rate": 6.533}, {"date": "2025-07-14", "rate": 6.473}, {"date": "2025-07-15", "rate": 6.52}, {"date": "2025-07-16", "rate": 6.535}, {"date": "2025-07-17", "rate": 6.579}, {"date": "2025-07-18", "rate": 6.548}, {"date": "2025-07-21", "rate": 6.461}, {"date": "2025-07-22", "rate": 6.452}, {"date": "2025-07-23", "rate": 6.468}, {"date": "2025-07-24", "rate": 6.559}, {"date": "2025-07-25", "rate": 6.566}, {"date": "2025-07-28", "rate": 6.499}, {"date": "2025-07-29", "rate": 6.464}, {"date": "2025-07-30", "rate": 6.487}, {"date": "2025-07-31", "rate": 6.498}, {"date": "2025-08-01", "rate": 6.415}, {"date": "2025-08-04", "rate": 6.382}, {"date": "2025-08-05", "rate": 6.415}, {"date": "2025-08-06", "rate": 6.409}, {"date": "2025-08-07", "rate": 6.331}, {"date": "2025-08-08", "rate": 6.478}, {"date": "2025-08-11", "rate": 6.356}, {"date": "2025-08-12", "rate": 6.371}, {"date": "2025-08-13", "rate": 6.351}, {"date": "2025-08-14", "rate": 6.369}, {"date": "2025-08-15", "rate": 6.42}, {"date": "2025-08-18", "rate": 6.322}, {"date": "2025-08-19", "rate": 6.385}, {"date": "2025-08-20", "rate": 6.402}, {"date": "2025-08-21", "rate": 6.401}, {"date": "2025-08-22", "rate": 6.344}, {"date": "2025-08-25", "rate": 6.314}, {"date": "2025-08-26", "rate": 6.284}, {"date": "2025-08-27", "rate": 6.328}, {"date": "2025-08-28", "rate": 6.253}, {"date": "2025-08-29", "rate": 6.259}, {"date": "2025-09-02", "rate": 6.262}, {"date": "2025-09-03", "rate": 6.249}, {"date": "2025-09-04", "rate": 6.254}, {"date": "2025-09-05", "rate": 6.122}, {"date": "2025-09-08", "rate": 6.054}, {"date": "2025-09-09", "rate": 6.116}, {"date": "2025-09-10", "rate": 6.115}, {"date": "2025-09-11", "rate": 6.128}, {"date": "2025-09-12", "rate": 6.082}, {"date": "2025-09-15", "rate": 6.02}, {"date": "2025-09-16", "rate": 5.981}, {"date": "2025-09-17", "rate": 6.003}, {"date": "2025-09-18", "rate": 6.07}, {"date": "2025-09-19", "rate": 6.122}, {"date": "2025-09-22", "rate": 6.073}, {"date": "2025-09-23", "rate": 6.134}, {"date": "2025-09-24", "rate": 6.153}, {"date": "2025-09-25", "rate": 6.133}, {"date": "2025-09-26", "rate": 6.165}, {"date": "2025-09-29", "rate": 6.096}, {"date": "2025-09-30", "rate": 6.084}, {"date": "2025-10-01", "rate": 6.125}, {"date": "2025-10-02", "rate": 6.12}, {"date": "2025-10-03", "rate": 6.109}, {"date": "2025-10-06", "rate": 6.102}, {"date": "2025-10-07", "rate": 6.099}, {"date": "2025-10-08", "rate": 6.089}, {"date": "2025-10-09", "rate": 6.102}, {"date": "2025-10-10", "rate": 6.165}, {"date": "2025-10-14", "rate": 6.124}, {"date": "2025-10-15", "rate": 6.096}, {"date": "2025-10-16", "rate": 6.06}, {"date": "2025-10-17", "rate": 6.066}, {"date": "2025-10-20", "rate": 6.049}, {"date": "2025-10-21", "rate": 6.02}, {"date": "2025-10-22", "rate": 6.074}, {"date": "2025-10-23", "rate": 6.033}, {"date": "2025-10-24", "rate": 6.114}, {"date": "2025-10-27", "rate": 5.968}, {"date": "2025-10-28", "rate": 6.006}, {"date": "2025-10-29", "rate": 6.014}, {"date": "2025-10-30", "rate": 6.08}, {"date": "2025-10-31", "rate": 6.043}, {"date": "2025-11-03", "rate": 6.035}, {"date": "2025-11-04", "rate": 6.042}, {"date": "2025-11-05", "rate": 6.058}, {"date": "2025-11-06", "rate": 6.068}, {"date": "2025-11-07", "rate": 6.084}, {"date": "2025-11-10", "rate": 6.054}, {"date": "2025-11-12", "rate": 6.105}, {"date": "2025-11-13", "rate": 6.061}, {"date": "2025-11-14", "rate": 6.088}, {"date": "2025-11-17", "rate": 6.089}, {"date": "2025-11-18", "rate": 6.104}, {"date": "2025-11-19", "rate": 6.102}, {"date": "2025-11-20", "rate": 6.129}, {"date": "2025-11-21", "rate": 6.044}, {"date": "2025-11-24", "rate": 6.029}, {"date": "2025-11-25", "rate": 5.978}, {"date": "2025-11-26", "rate": 5.99}, {"date": "2025-12-01", "rate": 5.992}, {"date": "2025-12-02", "rate": 6.052}, {"date": "2025-12-03", "rate": 5.985}, {"date": "2025-12-04", "rate": 6.06}, {"date": "2025-12-05", "rate": 6.034}, {"date": "2025-12-08", "rate": 6.072}, {"date": "2025-12-09", "rate": 6.025}, {"date": "2025-12-10", "rate": 6.145}, {"date": "2025-12-11", "rate": 5.989}, {"date": "2025-12-12", "rate": 6.057}, {"date": "2025-12-15", "rate": 6.048}, {"date": "2025-12-16", "rate": 6.035}, {"date": "2025-12-17", "rate": 6.078}, {"date": "2025-12-18", "rate": 6.049}, {"date": "2025-12-19", "rate": 6.122}, {"date": "2025-12-22", "rate": 6.008}, {"date": "2025-12-23", "rate": 6.064}, {"date": "2025-12-26", "rate": 5.999}, {"date": "2025-12-29", "rate": 5.96}, {"date": "2025-12-30", "rate": 5.979}, {"date": "2025-12-31", "rate": 6.016}, {"date": "2026-01-02", "rate": 6.035}, {"date": "2026-01-05", "rate": 5.979}, {"date": "2026-01-06", "rate": 6.057}, {"date": "2026-01-07", "rate": 5.962}, {"date": "2026-01-08", "rate": 5.988}, {"date": "2026-01-09", "rate": 5.942}, {"date": "2026-01-12", "rate": 5.896}, {"date": "2026-01-13", "rate": 5.918}, {"date": "2026-01-14", "rate": 5.92}, {"date": "2026-01-15", "rate": 5.888}, {"date": "2026-01-16", "rate": 5.987}, {"date": "2026-01-20", "rate": 5.984}, {"date": "2026-01-21", "rate": 5.973}, {"date": "2026-01-22", "rate": 5.973}, {"date": "2026-01-23", "rate": 5.918}, {"date": "2026-01-26", "rate": 5.897}, {"date": "2026-01-27", "rate": 5.923}, {"date": "2026-01-28", "rate": 5.94}, {"date": "2026-01-29", "rate": 5.935}, {"date": "2026-01-30", "rate": 5.987}, {"date": "2026-02-02", "rate": 5.88}, {"date": "2026-02-03", "rate": 5.972}, {"date": "2026-02-04", "rate": 5.935}, {"date": "2026-02-05", "rate": 5.963}, {"date": "2026-02-06", "rate": 5.941}, {"date": "2026-02-09", "rate": 5.952}, {"date": "2026-02-10", "rate": 5.908}, {"date": "2026-02-11", "rate": 5.956}, {"date": "2026-02-12", "rate": 5.931}, {"date": "2026-02-13", "rate": 5.9}, {"date": "2026-02-17", "rate": 5.872}, {"date": "2026-02-18", "rate": 5.961}, {"date": "2026-02-19", "rate": 5.98}, {"date": "2026-02-20", "rate": 5.883}, {"date": "2026-02-23", "rate": 5.859}, {"date": "2026-02-24", "rate": 5.933}, {"date": "2026-02-25", "rate": 5.88}, {"date": "2026-02-26", "rate": 5.903}, {"date": "2026-02-27", "rate": 5.861}, {"date": "2026-03-02", "rate": 5.836}, {"date": "2026-03-03", "rate": 5.872}, {"date": "2026-03-04", "rate": 5.898}, {"date": "2026-03-05", "rate": 5.947}, {"date": "2026-03-06", "rate": 5.923}, {"date": "2026-03-09", "rate": 5.909}, {"date": "2026-03-10", "rate": 5.859}, {"date": "2026-03-11", "rate": 5.944}, {"date": "2026-03-12", "rate": 5.958}]
+};
+</script>
+
+<script>
+var allConv = [], allFha = [], sliderIdxL = 0, sliderIdxR = 0, allDates = [];
+var PAD = { top: 24, right: 18, bottom: 48, left: 64 };
+
+/* ── utils ── */
+function cutoffDate(days) {
+  var d = new Date(); d.setDate(d.getDate() - days);
+  return d.toISOString().split('T')[0];
+}
+function fmtDate(str) {
+  return new Date(str + 'T00:00:00').toLocaleDateString('en-US',
+    { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtDateShort(str) {
+  var d = new Date(str + 'T00:00:00');
+  var mon = d.toLocaleDateString('en-US', { month: 'short' });
+  var yr  = String(d.getFullYear()).slice(-2);
+  return mon + " '" + yr;
+}
+function fmtDatePill(str) {
+  return new Date(str + 'T00:00:00').toLocaleDateString('en-US',
+    { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function daysBetween(a, b) {
+  return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00')) / 86400000);
+}
+
+/* ── rate cards ── */
+function renderCard(rId, cId, dId, data) {
+  if (!data.length) return;
+  var lat = data[data.length-1], prev = data.length >= 2 ? data[data.length-2] : null;
+  document.getElementById(rId).textContent = lat.y.toFixed(2) + '%';
+  document.getElementById(dId).textContent = 'as of ' + fmtDate(lat.x);
+  if (prev) {
+    var d = lat.y - prev.y, el = document.getElementById(cId);
+    var arrow = d > 0.001 ? '▲' : d < -0.001 ? '▼' : '—';
+    el.innerHTML = '<span class="rate-change-arrow">' + arrow + '</span> ' +
+      (d >= 0 ? '+' : '') + d.toFixed(2) + '% from prior day';
+    el.className = 'rate-change ' + (d > 0.001 ? 'up' : d < -0.001 ? 'down' : 'flat');
+  }
+}
+
+/* ── chart ── */
+function drawChart(conv, fha) {
+  var canvas = document.getElementById('rateChart');
+  var wrap   = document.getElementById('chart-wrap');
+  canvas.width  = wrap.clientWidth || 900;
+  canvas.height = 320;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  var pw = W - PAD.left - PAD.right;
+  var ph = H - PAD.top  - PAD.bottom;
+
+  var allVals = conv.map(function(d){return d.y;}).concat(fha.map(function(d){return d.y;}));
+  if (!allVals.length) return;
+  var minY = Math.min.apply(null, allVals) - 0.12;
+  var maxY = Math.max.apply(null, allVals) + 0.12;
+
+  /* unique sorted dates */
+  var dateSet = {};
+  conv.forEach(function(d){ dateSet[d.x]=1; });
+  fha.forEach(function(d){  dateSet[d.x]=1; });
+  var dates = Object.keys(dateSet).sort();
+  if (!dates.length) return;
+  var tsMin = new Date(dates[0]+'T00:00:00').getTime();
+  var tsMax = new Date(dates[dates.length-1]+'T00:00:00').getTime();
+  var tsRange = tsMax - tsMin || 1;
+
+  function xOf(s) { return PAD.left + ((new Date(s+'T00:00:00').getTime()-tsMin)/tsRange)*pw; }
+  function yOf(v) { return PAD.top + (1-(v-minY)/(maxY-minY))*ph; }
+
+  ctx.clearRect(0,0,W,H);
+
+  /* background fill */
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  /* grid */
+  var yTicks = 5;
+  ctx.font = '11px Inter, -apple-system, sans-serif';
+  for (var i=0; i<=yTicks; i++) {
+    var val = minY + (maxY-minY)*(i/yTicks);
+    var y   = yOf(val);
+    /* horizontal grid */
+    ctx.strokeStyle = 'rgba(180,200,220,0.8)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,6]);
+    ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right,y); ctx.stroke();
+    ctx.setLineDash([]);
+    /* y label */
+    ctx.fillStyle = '#8aaac0';
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(2)+'%', PAD.left-8, y+4);
+  }
+
+  /* x labels */
+  ctx.fillStyle = '#8aaac0';
+  ctx.textAlign = 'center';
+  var xStep = Math.max(1, Math.floor(dates.length/8));
+  for (var j=0; j<dates.length; j+=xStep) {
+    ctx.fillText(fmtDateShort(dates[j]), xOf(dates[j]), H-PAD.bottom+16);
+  }
+  /* bottom axis line */
+  ctx.strokeStyle = 'rgba(180,200,220,0.9)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top+ph);
+  ctx.lineTo(W-PAD.right, PAD.top+ph);
+  ctx.stroke();
+
+  /* draw one series */
+  function drawLine(data, color, glowColor, fillColor) {
+    if (!data.length) return;
+
+    /* area fill with gradient */
+    var grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top+ph);
+    grad.addColorStop(0, fillColor);
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.beginPath();
+    data.forEach(function(pt,idx){
+      var x=xOf(pt.x), y=yOf(pt.y);
+      idx===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.lineTo(xOf(data[data.length-1].x), PAD.top+ph);
+    ctx.lineTo(xOf(data[0].x), PAD.top+ph);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    /* line */
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2.5;
+    ctx.lineJoin    = 'round';
+    ctx.beginPath();
+    data.forEach(function(pt, idx) {
+      var x=xOf(pt.x), y=yOf(pt.y);
+      idx===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  }
+
+  drawLine(fha,  '#c9921a', 'rgba(201,146,26,0.4)',  'rgba(201,146,26,0.07)');
+  drawLine(conv, '#2a6fa8', 'rgba(42,111,168,0.5)',  'rgba(42,111,168,0.09)');
+
+  canvas._meta = { conv:conv, fha:fha, xOf:xOf, yOf:yOf, ph:ph };
+}
+
+/* ── hover ── */
+(function() {
+  var canvas    = document.getElementById('rateChart');
+  var tooltip   = document.getElementById('tooltip');
+  var crosshair = document.getElementById('crosshair');
+  var wrap      = document.getElementById('chart-wrap');
+
+  function nearest(data, mx) {
+    var best=null, bestD=Infinity;
+    data.forEach(function(pt){ var d=Math.abs(pt._px-mx); if(d<bestD){bestD=d;best=pt;} });
+    return best;
+  }
+
+  canvas.addEventListener('mousemove', function(e) {
+    var meta = canvas._meta; if (!meta) return;
+    var rect = canvas.getBoundingClientRect();
+    var mx   = (e.clientX-rect.left)*(canvas.width/rect.width);
+    if (mx<PAD.left||mx>canvas.width-PAD.right) { tooltip.style.display='none'; crosshair.style.display='none'; return; }
+    if (!meta._cached) {
+      meta.conv.forEach(function(pt){ pt._px=meta.xOf(pt.x); });
+      meta.fha.forEach(function(pt){  pt._px=meta.xOf(pt.x); });
+      meta._cached=true;
+    }
+    var nc=nearest(meta.conv,mx), nf=nearest(meta.fha,mx);
+    if (!nc&&!nf) return;
+    document.getElementById('tt-date').textContent = fmtDate(nc?nc.x:nf.x);
+    document.getElementById('tt-conv').innerHTML = nc ? '<span class="tooltip-val">'+nc.y.toFixed(2)+'%</span> Conventional' : '—';
+    document.getElementById('tt-fha').innerHTML  = nf ? '<span class="tooltip-val">'+nf.y.toFixed(2)+'%</span> FHA' : '—';
+    var cx = nc?nc._px:nf._px;
+    crosshair.style.display='block'; crosshair.style.left=cx+'px'; crosshair.style.height=(canvas.height-PAD.bottom)+'px';
+    var tw=200, ww=wrap.clientWidth;
+    tooltip.style.display='block';
+    tooltip.style.left=((cx+14+tw>ww)?cx-tw-14:cx+14)+'px';
+    tooltip.style.top=(PAD.top+4)+'px';
+  });
+  canvas.addEventListener('mouseleave', function(){ tooltip.style.display='none'; crosshair.style.display='none'; });
+})();
+
+/* ── slider ── */
+function filterByIdx(data, iL, iR) {
+  var dL=allDates[iL], dR=allDates[iR];
+  return data.filter(function(d){ return d.x>=dL&&d.x<=dR; });
+}
+
+function updateSliderUI() {
+  var n=allDates.length-1;
+  var pL=n>0?(sliderIdxL/n)*100:0;
+  var pR=n>0?(sliderIdxR/n)*100:100;
+  document.getElementById('thumb-left').style.left=pL+'%';
+  document.getElementById('thumb-right').style.left=pR+'%';
+  document.getElementById('slider-fill').style.left=pL+'%';
+  document.getElementById('slider-fill').style.width=(pR-pL)+'%';
+  var dL=allDates[sliderIdxL], dR=allDates[sliderIdxR];
+  document.getElementById('lbl-start').textContent = dL ? fmtDatePill(dL) : '—';
+  document.getElementById('lbl-end').textContent   = dR ? fmtDatePill(dR) : '—';
+  if (dL && dR) {
+    var span = daysBetween(dL, dR);
+    document.getElementById('lbl-span').textContent = span + ' days';
+  }
+}
+
+function buildTicks() {
+  var el = document.getElementById('slider-ticks');
+  el.innerHTML = '';
+  if (!allDates.length) return;
+  var first = new Date(allDates[0]+'T00:00:00');
+  var last  = new Date(allDates[allDates.length-1]+'T00:00:00');
+  /* generate year ticks */
+  var ticks = [];
+  for (var y = first.getFullYear(); y <= last.getFullYear()+1; y++) {
+    var d = new Date(y, 0, 1);
+    if (d >= first && d <= last) ticks.push(d.toISOString().split('T')[0]);
+  }
+  ticks.forEach(function(dateStr) {
+    var tsMin = first.getTime(), tsMax = last.getTime();
+    var pct = ((new Date(dateStr+'T00:00:00').getTime()-tsMin)/(tsMax-tsMin))*100;
+    var span = document.createElement('span');
+    span.className = 'slider-tick';
+    span.textContent = new Date(dateStr+'T00:00:00').getFullYear();
+    span.style.position = 'absolute';
+    span.style.left = pct + '%';
+    span.style.transform = 'translateX(-50%)';
+    el.style.position = 'relative';
+    el.appendChild(span);
+  });
+}
+
+function initSlider() {
+  var dateSet={};
+  allConv.forEach(function(d){ dateSet[d.x]=1; });
+  allFha.forEach(function(d){  dateSet[d.x]=1; });
+  allDates = Object.keys(dateSet).sort();
+  sliderIdxR = allDates.length-1;
+  var cutoff = '2023-01-01';
+  sliderIdxL = 0;
+  for (var i=0; i<allDates.length; i++) { if (allDates[i]>=cutoff){ sliderIdxL=i; break; } }
+  buildTicks();
+  updateSliderUI();
+  setupSliderDrag();
+}
+
+function setupSliderDrag() {
+  var track = document.getElementById('slider-track');
+  var dragging = null;
+
+  function posToIdx(cx) {
+    var rect=track.getBoundingClientRect();
+    var pct=Math.max(0,Math.min(1,(cx-rect.left)/rect.width));
+    return Math.round(pct*(allDates.length-1));
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    var cx=e.touches?e.touches[0].clientX:e.clientX;
+    var idx=posToIdx(cx);
+    if (dragging==='left')  { sliderIdxL=Math.max(0,Math.min(idx,sliderIdxR-1)); }
+    else                    { sliderIdxR=Math.min(allDates.length-1,Math.max(idx,sliderIdxL+1)); }
+    updateSliderUI();
+    if (allConv.length) drawChart(filterByIdx(allConv,sliderIdxL,sliderIdxR), filterByIdx(allFha,sliderIdxL,sliderIdxR));
+  }
+  function onUp() { dragging=null; }
+
+  ['thumb-left','thumb-right'].forEach(function(id){
+    document.getElementById(id).addEventListener('mousedown', function(e){ dragging=id==='thumb-left'?'left':'right'; e.preventDefault(); });
+    document.getElementById(id).addEventListener('touchstart', function(){ dragging=id==='thumb-left'?'left':'right'; },{passive:true});
+  });
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('touchmove', onMove,{passive:true});
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchend', onUp);
+
+  track.addEventListener('click', function(e){
+    if (e.target.classList.contains('slider-thumb')) return;
+    var idx=posToIdx(e.clientX);
+    if (Math.abs(idx-sliderIdxL)<=Math.abs(idx-sliderIdxR))
+      sliderIdxL=Math.max(0,Math.min(idx,sliderIdxR-1));
+    else
+      sliderIdxR=Math.min(allDates.length-1,Math.max(idx,sliderIdxL+1));
+    updateSliderUI();
+    if (allConv.length) drawChart(filterByIdx(allConv,sliderIdxL,sliderIdxR), filterByIdx(allFha,sliderIdxL,sliderIdxR));
+  });
+}
+
+window.addEventListener('resize', function(){
+  if (allConv.length) drawChart(filterByIdx(allConv,sliderIdxL,sliderIdxR), filterByIdx(allFha,sliderIdxL,sliderIdxR));
+});
+
+(function init(){
+  var r = window.EMBEDDED_RATES;
+  if (!r||!r.conventional||!r.conventional.length) {
+    document.getElementById('chart-wrap').innerHTML =
+      '<div class="empty-state">No data yet.<br>Run <code>python3 /Users/juanyepes/Documents/Claude/MortgageDashboard/update_rates.py</code> in Terminal, then refresh.</div>';
+    return;
+  }
+  allConv = r.conventional.map(function(d){ return {x:d.date,y:d.rate}; });
+  allFha  = r.fha.map(function(d){ return {x:d.date,y:d.rate}; });
+  renderCard('conv-rate','conv-change','conv-date', allConv);
+  renderCard('fha-rate', 'fha-change', 'fha-date',  allFha);
+  document.getElementById('last-updated').textContent = r.lastUpdated || '—';
+  initSlider();
+  /* defer draw until browser has completed layout so clientWidth is available */
+  requestAnimationFrame(function() {
+    drawChart(filterByIdx(allConv,sliderIdxL,sliderIdxR), filterByIdx(allFha,sliderIdxL,sliderIdxR));
+  });
+  renderMarketOverview();
+})();
+
+/* ── market overview ── */
+function renderMarketOverview() {
+  var r = window.EMBEDDED_RATES;
+  if (!r) return;
+
+  /* trend chips */
+  var chipsEl = document.getElementById('trend-chips');
+  if (chipsEl && r.trends) {
+    var t = r.trends;
+    var periods = [
+      {key:'conv_1d',  label:'1 Day'},
+      {key:'conv_1w',  label:'1 Week'},
+      {key:'conv_1m',  label:'1 Month'},
+      {key:'conv_3m',  label:'1 Quarter'},
+      {key:'conv_1y',  label:'1 Year'},
+      {key:'conv_2y',  label:'2 Year'},
+      {key:'conv_3y',  label:'3 Year'},
+      {key:'conv_4y',  label:'4 Year'},
+      {key:'conv_5y',  label:'5 Year'},
+    ];
+    periods.forEach(function(p) {
+      var val = t[p.key];
+      if (val === null || val === undefined) return;
+      var cls = val > 0.005 ? 'up' : val < -0.005 ? 'down' : 'flat';
+      var sign = val > 0 ? '+' : '';
+      var chip = document.createElement('div');
+      chip.className = 'trend-chip ' + cls;
+      chip.innerHTML = '<span class="chip-label">' + p.label + '</span>' +
+                       '<span class="chip-val">' + sign + val.toFixed(2) + '%</span>';
+      chipsEl.appendChild(chip);
+    });
+  }
+
+  /* commentary — historical + outlook */
+  function fillSection(id, text) {
+    var el = document.getElementById(id);
+    if (!el || !text) return;
+    var p = document.createElement('p');
+    p.textContent = text;
+    el.appendChild(p);
+  }
+  fillSection('commentary-historical', r.commentary_historical);
+  fillSection('commentary-outlook',    r.commentary_outlook);
+  /* fallback: legacy single commentary field */
+  if (!r.commentary_historical && r.commentary) {
+    var parts = r.commentary.split('\n\n');
+    fillSection('commentary-historical', parts[0]);
+    fillSection('commentary-outlook',    parts[1] || parts[0]);
+  }
+
+  var dateEl = document.getElementById('commentary-date');
+  if (dateEl) dateEl.textContent = r.lastUpdated || '—';
+}
+
+/* ── screenshot: capture topbar + container separately, stitch ── */
+function takeScreenshot() {
+  var btn   = document.getElementById('screenshot-btn');
+  var label = document.getElementById('screenshot-label');
+  label.textContent = 'Capturing…';
+  btn.style.opacity = '0.6';
+  btn.disabled = true;
+
+  var topbarEl    = document.querySelector('.topbar');
+  var containerEl = document.querySelector('.container');
+  var W           = document.body.offsetWidth;
+  var topbarH     = topbarEl.getBoundingClientRect().height;
+  var containerH  = containerEl.scrollHeight;  /* full content height */
+
+  var opts = { scale: 2, useCORS: true, allowTaint: true };
+
+  /* capture topbar */
+  html2canvas(topbarEl, Object.assign({}, opts, {
+    backgroundColor: '#ffffff',
+    width: W, windowWidth: W
+  }))
+  .then(function(c1) {
+    /* capture full container — use its actual scrollHeight as the window height
+       so html2canvas lays out ALL children, not just the visible viewport */
+    return html2canvas(containerEl, Object.assign({}, opts, {
+      backgroundColor: '#edf1f6',
+      width:        W,
+      height:       containerH,
+      windowWidth:  W,
+      windowHeight: containerH
+    })).then(function(c2) {
+
+      /* stitch into one canvas */
+      var out = document.createElement('canvas');
+      out.width  = W * 2;
+      out.height = (topbarH + containerH + 32) * 2;  /* +32 for bottom padding */
+      var ctx = out.getContext('2d');
+      ctx.fillStyle = '#edf1f6';
+      ctx.fillRect(0, 0, out.width, out.height);
+      ctx.drawImage(c1, 0, 0);
+      ctx.drawImage(c2, 0, topbarH * 2);
+
+      var link = document.createElement('a');
+      var d    = new Date();
+      var ts   = d.getFullYear() + '-' +
+                 String(d.getMonth()+1).padStart(2,'0') + '-' +
+                 String(d.getDate()).padStart(2,'0');
+      link.download = 'mortgage-rates-' + ts + '.png';
+      link.href = out.toDataURL('image/png');
+      link.click();
+      label.textContent = '✓ Saved!';
+      setTimeout(function() {
+        label.textContent = 'Screenshot';
+        btn.style.opacity = '1';
+        btn.disabled = false;
+      }, 2000);
+    });
+  })
+  .catch(function() {
+    label.textContent = 'Screenshot';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+    alert('Screenshot failed. Make sure you opened this file in a browser (not a preview).');
+  });
+}
+</script>
+</body>
+</html>
